@@ -1,0 +1,79 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>نظام متابعة المناديب</title>
+  <meta name="theme-color" content="#101827">
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #101827;
+      color: white;
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+    }
+    main {
+      width: min(90%, 420px);
+      padding: 24px;
+      background: #1d293b;
+      border-radius: 18px;
+      box-sizing: border-box;
+    }
+    h1 { font-size: 25px; }
+    p { color: #cbd5e1; line-height: 1.8; }
+    input, button {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 14px;
+      margin-top: 12px;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+    input {
+      border: 1px solid #475569;
+      background: #101827;
+      color: white;
+    }
+    button {
+      border: 0;
+      background: #16a34a;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    #message { margin-top: 15px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>متابعة المندوبين</h1>
+    <p>أهلًا بك في نظام متابعة الطلبات. سنجهّز تسجيل الدخول والإشعارات في الخطوات التالية.</p>
+
+    <label for="riderId">رقم المندوب (ID)</label>
+    <input id="riderId" type="text" placeholder="اكتب رقم المندوب">
+    <button id="loginBtn">دخول</button>
+
+    <p id="message">النسخة التجريبية — لم يتم التحقق من الهوية بعد.</p>
+  </main>
+
+  <script>
+    document.getElementById("loginBtn").addEventListener("click", () => {
+      const id = document.getElementById("riderId").value.trim();
+      const message = document.getElementById("message");
+
+      if (!id) {
+        message.textContent = "من فضلك اكتب رقم المندوب.";
+        return;
+      }
+
+      message.textContent =
+        "تم استلام الرقم " + id +
+        ". تسجيل الدخول الفعلي سيتم تفعيله بعد إعداد قاعدة البيانات.";
+    });
+  </script>
+</body>
+</html>
