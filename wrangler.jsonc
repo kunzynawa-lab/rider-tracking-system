@@ -6,6 +6,10 @@
     "directory": "./public",
     "binding": "ASSETS"
   },
+  "vars": {
+    "VAPID_PUBLIC_KEY": "BINJaZcORmnxfv8BzsEXWLglY8P0Klxfa692jyX0fIb1xKP0Fp03lHWdFKbMFUyGiBC4dwWxGyfco2wjoGUnZSg",
+    "VAPID_SUBJECT": "https://rider-tracking-system.kunzynawa.workers.dev"
+  },
   "d1_databases": [
     {
       "binding": "DB",
