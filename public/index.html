@@ -7,6 +7,8 @@
   <meta name="theme-color" content="#101827">
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon.svg">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <style>
     body { margin:0; font-family:Arial,sans-serif; background:#101827; color:#fff;
            display:grid; place-items:center; min-height:100vh; }
@@ -17,6 +19,8 @@
     input { border:1px solid #475569; background:#101827; color:#fff; }
     button { border:0; background:#16a34a; color:#fff; font-weight:bold; cursor:pointer; }
     button.secondary { background:#475569; }
+    button.blue { background:#2563eb; }
+    button:disabled { opacity:.5; cursor:default; }
     #message { margin-top:15px; }
     .hidden { display:none; }
   </style>
@@ -33,6 +37,9 @@
 
     <section id="homeView" class="hidden">
       <p id="welcome"></p>
+      <p id="pushState"></p>
+      <button id="enableBtn">تفعيل الإشعارات</button>
+      <button id="testBtn" class="blue hidden">إرسال إشعار تجريبي</button>
       <button id="logoutBtn" class="secondary">تسجيل خروج (للتجربة)</button>
     </section>
 
@@ -42,17 +49,11 @@
   <script>
     const $ = (id) => document.getElementById(id);
     const msg = (t) => { $("message").textContent = t; };
+    const getToken = () => localStorage.getItem("riderToken");
 
-    function showHome(rider) {
-      $("loginView").classList.add("hidden");
-      $("homeView").classList.remove("hidden");
-      $("welcome").textContent = "تم الدخول. رقم المندوب: " + rider.id;
-    }
-
-    function showLogin() {
-      $("homeView").classList.add("hidden");
-      $("loginView").classList.remove("hidden");
-    }
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isStandalone =
+      window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
 
     async function post(path, data) {
       const res = await fetch(path, {
@@ -63,6 +64,37 @@
       return { status: res.status, body: await res.json().catch(() => ({})) };
     }
 
+    function urlBase64ToUint8Array(base64String) {
+      const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+      const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+      const raw = atob(base64);
+      return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+    }
+
+    function setPushUI(enabled) {
+      $("enableBtn").classList.toggle("hidden", enabled);
+      $("testBtn").classList.toggle("hidden", !enabled);
+      $("pushState").textContent = enabled
+        ? "الإشعارات مفعّلة على جهازك ✅"
+        : "الإشعارات غير مفعّلة على جهازك.";
+    }
+
+    function showHome(rider, pushEnabled) {
+      $("loginView").classList.add("hidden");
+      $("homeView").classList.remove("hidden");
+      $("welcome").textContent = "تم الدخول. رقم المندوب: " + rider.id;
+      setPushUI(!!pushEnabled);
+      if (isIOS && !isStandalone) {
+        $("enableBtn").disabled = true;
+        msg("على الآيفون: افتح قائمة المشاركة ثم «إضافة إلى الشاشة الرئيسية»، وافتح التطبيق من الأيقونة، وبعدها فعّل الإشعارات.");
+      }
+    }
+
+    function showLogin() {
+      $("homeView").classList.add("hidden");
+      $("loginView").classList.remove("hidden");
+    }
+
     $("loginBtn").addEventListener("click", async () => {
       const id = $("riderId").value.trim();
       if (!id) return msg("من فضلك اكتب رقم المندوب.");
@@ -71,7 +103,7 @@
         const { body } = await post("/api/login", { id });
         if (!body.ok) return msg(body.error || "حصل خطأ");
         localStorage.setItem("riderToken", body.token);
-        showHome(body.rider);
+        showHome(body.rider, false);
         msg("تم تسجيل جهازك بنجاح.");
       } catch {
         msg("تعذر الاتصال. تأكد من الإنترنت.");
@@ -84,15 +116,60 @@
       msg("تم تسجيل الخروج.");
     });
 
+    $("enableBtn").addEventListener("click", async () => {
+      if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+        return msg("المتصفح ده مش بيدعم الإشعارات.");
+      }
+      try {
+        msg("جاري التفعيل...");
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") {
+          return msg("لازم توافق على الإشعارات علشان تشتغل.");
+        }
+        const reg = await navigator.serviceWorker.ready;
+        const keyRes = await fetch("/api/vapid-key").then((r) => r.json());
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub) {
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(keyRes.key),
+          });
+        }
+        const { body } = await post("/api/subscribe", {
+          token: getToken(),
+          subscription: sub.toJSON(),
+        });
+        if (!body.ok) return msg(body.error || "فشل حفظ الاشتراك");
+        setPushUI(true);
+        msg("تم تفعيل الإشعارات. جرّب الإشعار التجريبي.");
+      } catch (e) {
+        msg("حصل خطأ أثناء التفعيل: " + (e && e.message ? e.message : e));
+      }
+    });
+
+    $("testBtn").addEventListener("click", async () => {
+      msg("جاري إرسال إشعار تجريبي... اقفل الشاشة أو الصفحة وانتظر ثواني.");
+      try {
+        const { body } = await post("/api/test-push", { token: getToken() });
+        if (body.ok) msg("تم الإرسال. المفروض يوصلك إشعار حالًا.");
+        else {
+          if (/انتهى|غير مفعّلة/.test(body.error || "")) setPushUI(false);
+          msg(body.error || "فشل الإرسال");
+        }
+      } catch {
+        msg("تعذر الاتصال. تأكد من الإنترنت.");
+      }
+    });
+
     (async function init() {
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("/sw.js").catch(() => {});
       }
-      const token = localStorage.getItem("riderToken");
+      const token = getToken();
       if (!token) return;
       try {
         const { status, body } = await post("/api/me", { token });
-        if (body.ok) showHome(body.rider);
+        if (body.ok) showHome(body.rider, body.pushEnabled);
         else if (status === 401) localStorage.removeItem("riderToken");
       } catch {
         /* offline: keep token */
