@@ -1,1 +1,13 @@
-
+{
+  "name": "نظام متابعة المناديب",
+  "short_name": "المناديب",
+  "start_url": "/",
+  "display": "standalone",
+  "dir": "rtl",
+  "lang": "ar",
+  "background_color": "#101827",
+  "theme_color": "#101827",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
