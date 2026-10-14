@@ -1,1 +1,103 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>نظام متابعة المناديب</title>
+  <meta name="theme-color" content="#101827">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <style>
+    body { margin:0; font-family:Arial,sans-serif; background:#101827; color:#fff;
+           display:grid; place-items:center; min-height:100vh; }
+    main { width:min(90%,420px); padding:24px; background:#1d293b; border-radius:18px; box-sizing:border-box; }
+    h1 { font-size:25px; }
+    p { color:#cbd5e1; line-height:1.8; }
+    input, button { width:100%; box-sizing:border-box; padding:14px; margin-top:12px; border-radius:10px; font-size:16px; }
+    input { border:1px solid #475569; background:#101827; color:#fff; }
+    button { border:0; background:#16a34a; color:#fff; font-weight:bold; cursor:pointer; }
+    button.secondary { background:#475569; }
+    #message { margin-top:15px; }
+    .hidden { display:none; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>متابعة المندوبين</h1>
 
+    <section id="loginView">
+      <label for="riderId">رقم المندوب (ID)</label>
+      <input id="riderId" type="text" inputmode="numeric" placeholder="اكتب رقم المندوب">
+      <button id="loginBtn">دخول</button>
+    </section>
+
+    <section id="homeView" class="hidden">
+      <p id="welcome"></p>
+      <button id="logoutBtn" class="secondary">تسجيل خروج (للتجربة)</button>
+    </section>
+
+    <p id="message"></p>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const msg = (t) => { $("message").textContent = t; };
+
+    function showHome(rider) {
+      $("loginView").classList.add("hidden");
+      $("homeView").classList.remove("hidden");
+      $("welcome").textContent = "تم الدخول. رقم المندوب: " + rider.id;
+    }
+
+    function showLogin() {
+      $("homeView").classList.add("hidden");
+      $("loginView").classList.remove("hidden");
+    }
+
+    async function post(path, data) {
+      const res = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      return { status: res.status, body: await res.json().catch(() => ({})) };
+    }
+
+    $("loginBtn").addEventListener("click", async () => {
+      const id = $("riderId").value.trim();
+      if (!id) return msg("من فضلك اكتب رقم المندوب.");
+      msg("جاري التحقق...");
+      try {
+        const { body } = await post("/api/login", { id });
+        if (!body.ok) return msg(body.error || "حصل خطأ");
+        localStorage.setItem("riderToken", body.token);
+        showHome(body.rider);
+        msg("تم تسجيل جهازك بنجاح.");
+      } catch {
+        msg("تعذر الاتصال. تأكد من الإنترنت.");
+      }
+    });
+
+    $("logoutBtn").addEventListener("click", () => {
+      localStorage.removeItem("riderToken");
+      showLogin();
+      msg("تم تسجيل الخروج.");
+    });
+
+    (async function init() {
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      }
+      const token = localStorage.getItem("riderToken");
+      if (!token) return;
+      try {
+        const { status, body } = await post("/api/me", { token });
+        if (body.ok) showHome(body.rider);
+        else if (status === 401) localStorage.removeItem("riderToken");
+      } catch {
+        /* offline: keep token */
+      }
+    })();
+  </script>
+</body>
+</html>
