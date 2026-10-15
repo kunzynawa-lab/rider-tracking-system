@@ -1,1 +1,534 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>غرفة المتابعة</title>
+  <meta name="theme-color" content="#14213d">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <style>
+    :root {
+      --paper: #f1f4f8;
+      --surface: #ffffff;
+      --ink: #14213d;
+      --muted: #5b6b82;
+      --line: #d9e0e8;
+      --focus: #0b6bcb;
+      --late: #d92d20;
+      --done: #1e9e5a;
+      --idle: #8794a8;
+      --declared: #f0b429;
+      --arrived: #8b5cf6;
+      --picked: #1d8fe1;
+      --font: "IBM Plex Sans Arabic", Tahoma, Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; background: var(--paper); color: var(--ink); font-family: var(--font);
+      line-height: 1.5; display: flex; flex-direction: column; min-height: 100dvh;
+    }
+    button { font: inherit; color: inherit; cursor: pointer; }
+    :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+    .hidden { display: none !important; }
+    .num { font-variant-numeric: tabular-nums; }
 
+    /* ---- بوابة الدخول ---- */
+    #gate { margin: auto; width: min(92%, 380px); padding: 28px 0; }
+    #gate h1 { font-size: 24px; margin: 0 0 6px; }
+    #gate p { margin: 0 0 18px; color: var(--muted); }
+    #gate input {
+      width: 100%; padding: 14px; font: inherit; border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
+    }
+    #gate button {
+      width: 100%; margin-top: 12px; padding: 14px; border: 0; border-radius: 8px; background: var(--ink); color: #fff; font-weight: 700;
+    }
+    #gateError { color: var(--late); min-height: 24px; margin-top: 10px; }
+
+    /* ---- الشريط العلوي ---- */
+    header.bar {
+      display: flex; align-items: center; gap: 16px; padding: 10px 20px; background: var(--ink); color: #fff; flex-wrap: wrap;
+    }
+    header.bar h1 { font-size: 18px; margin: 0; }
+    .live { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: #cfd8e6; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #5ddb97; }
+    .dot.off { background: #ff8a80; }
+    .spacer { flex: 1; }
+    .bar button {
+      background: transparent; border: 1px solid #5b6f94; color: #fff; border-radius: 8px; padding: 6px 14px; font-size: 14px;
+    }
+    .bar button:hover { background: #22345a; }
+
+    /* ---- شريط المراحل (إحصائيات + فلتر) ---- */
+    nav.pipeline {
+      display: flex; background: var(--surface); border-bottom: 1px solid var(--line); overflow-x: auto;
+    }
+    nav.pipeline button, nav.pipeline .static {
+      flex: 1 0 118px; text-align: start; background: none; border: 0; border-inline-start: 1px solid var(--line);
+      border-top: 4px solid transparent; padding: 10px 16px 12px;
+    }
+    nav.pipeline button:first-child { border-inline-start: 0; }
+    nav.pipeline .n { display: block; font-size: 28px; font-weight: 700; line-height: 1.1; }
+    nav.pipeline .l { display: block; font-size: 13px; color: var(--muted); }
+    nav.pipeline button[aria-pressed="true"] { background: #f6f9fc; border-top-color: var(--c, var(--ink)); }
+    nav.pipeline button[aria-pressed="true"] .l { color: var(--ink); font-weight: 600; }
+    nav.pipeline button:hover { background: #f6f9fc; }
+    nav.pipeline .static { cursor: default; border-top-color: var(--done); }
+    nav.pipeline .static .n { color: var(--done); }
+
+    /* ---- اللوحة ---- */
+    .board { flex: 1; display: grid; grid-template-columns: 400px 1fr; min-height: 0; }
+    aside.side { display: flex; flex-direction: column; min-height: 0; background: var(--surface); border-inline-end: 1px solid var(--line); }
+    .search { padding: 12px; border-bottom: 1px solid var(--line); }
+    .search input { width: 100%; padding: 10px 12px; font: inherit; border: 1px solid var(--line); border-radius: 8px; }
+    #list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; min-height: 160px; }
+    #list li { border-bottom: 1px solid var(--line); }
+    .rider {
+      display: block; width: 100%; text-align: start; background: none; border: 0; padding: 10px 16px;
+      border-inline-start: 5px solid var(--c, var(--idle));
+    }
+    .rider:hover { background: #f6f9fc; }
+    .rider .t { display: flex; align-items: baseline; gap: 8px; }
+    .rider .name { font-weight: 700; }
+    .rider .id { color: var(--muted); font-size: 13px; }
+    .rider .state { margin-inline-start: auto; font-size: 13px; font-weight: 600; }
+    .rider .meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .flag { color: var(--late); font-weight: 700; }
+    .empty { padding: 28px 16px; color: var(--muted); text-align: center; }
+
+    .events { border-top: 1px solid var(--line); max-height: 26%; overflow-y: auto; background: #fafbfd; }
+    .events h2 { font-size: 14px; margin: 0; padding: 10px 16px 6px; color: var(--muted); font-weight: 600; }
+    .events ul { list-style: none; margin: 0; padding: 0 16px 10px; }
+    .events li { display: flex; gap: 8px; font-size: 13px; padding: 3px 0; }
+    .events .when { margin-inline-start: auto; color: var(--muted); }
+
+    .mapwrap { position: relative; min-height: 320px; }
+    #map { position: absolute; inset: 0; direction: ltr; background: #dfe6ee; }
+    #mapNote {
+      position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--muted);
+      pointer-events: none; z-index: 500;
+    }
+    .fit {
+      position: absolute; z-index: 600; top: 12px; inset-inline-end: 12px; background: var(--surface); border: 1px solid var(--line);
+      border-radius: 8px; padding: 6px 12px; font-size: 14px; box-shadow: 0 1px 4px rgba(20, 33, 61, .2);
+    }
+
+    /* ---- علامات الخريطة ---- */
+    .pin-wrap { background: none; border: 0; }
+    .pin {
+      position: absolute; transform: translate(-50%, -50%); display: grid; place-items: center; min-width: 34px; height: 34px;
+      padding: 0 8px; border-radius: 17px; background: var(--fill); color: var(--ink-on); border: 2px solid #fff;
+      font: 700 12px/1 var(--font); white-space: nowrap; box-shadow: 0 1px 4px rgba(20, 33, 61, .5);
+    }
+    .pin.stale { opacity: .55; border-style: dashed; border-color: var(--ink-on); }
+    .pin.late { box-shadow: 0 0 0 3px var(--late), 0 1px 4px rgba(20, 33, 61, .5); }
+    @media (prefers-reduced-motion: no-preference) {
+      .pin.late { animation: ring 1.6s ease-out infinite; }
+      @keyframes ring {
+        0% { box-shadow: 0 0 0 3px var(--late), 0 0 0 3px rgba(217, 45, 32, .5); }
+        100% { box-shadow: 0 0 0 3px var(--late), 0 0 0 16px rgba(217, 45, 32, 0); }
+      }
+    }
+    .popup { direction: rtl; font-family: var(--font); min-width: 170px; }
+    .popup b { font-size: 15px; }
+    .popup div { margin-top: 2px; color: var(--muted); font-size: 13px; }
+
+    /* ---- إضافة مناديب ---- */
+    dialog { border: 0; border-radius: 12px; padding: 22px; width: min(92vw, 440px); box-shadow: 0 10px 40px rgba(20, 33, 61, .35); font-family: var(--font); color: var(--ink); }
+    dialog::backdrop { background: rgba(20, 33, 61, .45); }
+    dialog h2 { margin: 0 0 4px; font-size: 18px; }
+    dialog p { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
+    dialog textarea { width: 100%; min-height: 150px; padding: 10px; font: inherit; direction: rtl; border: 1px solid var(--line); border-radius: 8px; resize: vertical; }
+    dialog .row { display: flex; gap: 10px; margin-top: 12px; }
+    dialog .row button { flex: 1; padding: 11px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); font-weight: 600; }
+    dialog .row button.primary { background: var(--ink); border-color: var(--ink); color: #fff; }
+    #addResult { margin-top: 10px; min-height: 22px; font-size: 14px; }
+
+    @media (max-width: 900px) {
+      .board { grid-template-columns: 1fr; grid-template-rows: 44vh auto; }
+      .mapwrap { order: -1; min-height: 0; }
+      aside.side { border-inline-end: 0; }
+      #list { max-height: none; }
+      .events { max-height: none; }
+    }
+  </style>
+</head>
+<body>
+  <section id="gate" class="hidden">
+    <h1>غرفة المتابعة</h1>
+    <p>اكتب مفتاح الإدارة للدخول.</p>
+    <input id="keyInput" type="password" autocomplete="current-password" placeholder="مفتاح الإدارة">
+    <button id="keyBtn">دخول</button>
+    <div id="gateError" role="alert"></div>
+  </section>
+
+  <div id="app" class="hidden" style="display:contents">
+    <header class="bar">
+      <h1>غرفة المتابعة</h1>
+      <span class="live"><span class="dot" id="liveDot"></span><span id="liveText">جاري التحميل...</span></span>
+      <span class="spacer"></span>
+      <button id="addBtn">إضافة مناديب</button>
+      <button id="outBtn">خروج</button>
+    </header>
+
+    <nav class="pipeline" id="pipeline" aria-label="تصفية المناديب حسب الحالة"></nav>
+
+    <div class="board">
+      <aside class="side">
+        <div class="search"><input id="search" type="search" placeholder="ابحث بالاسم أو الرقم" aria-label="بحث عن مندوب"></div>
+        <ul id="list"></ul>
+        <section class="events">
+          <h2>آخر الأحداث</h2>
+          <ul id="events"></ul>
+        </section>
+      </aside>
+      <div class="mapwrap">
+        <div id="map" role="application" aria-label="خريطة المناديب"></div>
+        <div id="mapNote" class="hidden"></div>
+        <button class="fit hidden" id="fitBtn">عرض كل المناديب</button>
+      </div>
+    </div>
+  </div>
+
+  <dialog id="addDlg">
+    <h2>إضافة مناديب</h2>
+    <p>اكتب كل مندوب في سطر: الرقم ثم الاسم.<br>مثال: <span dir="ltr">1002, أحمد محمد</span></p>
+    <textarea id="addText" placeholder="1002, أحمد&#10;1003, محمد"></textarea>
+    <div id="addResult" role="status"></div>
+    <div class="row">
+      <button id="addCancel">إغلاق</button>
+      <button id="addGo" class="primary">إضافة</button>
+    </div>
+  </dialog>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const KEY = "adminKey";
+    const REFRESH_MS = 15000;
+    const STALE_LOC_MS = 10 * 60 * 1000;
+
+    const STATES = {
+      idle:      { label: "مفيش أوردر",       fill: "#8794a8", on: "#ffffff", css: "var(--idle)" },
+      declared:  { label: "معه أوردر",        fill: "#f0b429", on: "#3b2a00", css: "var(--declared)" },
+      arrived:   { label: "عند المطعم",       fill: "#8b5cf6", on: "#ffffff", css: "var(--arrived)" },
+      picked_up: { label: "في الطريق للعميل", fill: "#1d8fe1", on: "#ffffff", css: "var(--picked)" },
+    };
+    const PRIORITY = { picked_up: 1, arrived: 2, declared: 3, idle: 4 };
+    const TILES = [
+      { key: "all", label: "كل المناديب", css: "var(--ink)" },
+      { key: "idle", label: STATES.idle.label, css: STATES.idle.css },
+      { key: "declared", label: STATES.declared.label, css: STATES.declared.css },
+      { key: "arrived", label: STATES.arrived.label, css: STATES.arrived.css },
+      { key: "picked_up", label: STATES.picked_up.label, css: STATES.picked_up.css },
+      { key: "late", label: "متأخر في الرد", css: "var(--late)" },
+      { key: "nopush", label: "إشعاراته مقفولة", css: "var(--muted)" },
+    ];
+    const EVENT_LABELS = {
+      declared: "أعلن إن معاه أوردر", arrived: "وصل المطعم", picked_up: "استلم الأوردر",
+      delivered: "سلّم الأوردر", cancelled: "ألغى الأوردر",
+    };
+
+    let data = { riders: [], stats: {}, events: [], now: Date.now() };
+    let skew = 0;
+    let filter = "all";
+    let query = "";
+    let map = null;
+    const markers = new Map();
+    let fitted = false;
+    let timer = null;
+
+    const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    const nowMs = () => Date.now() + skew;
+    function ago(ms) {
+      if (!ms) return "";
+      const m = Math.floor(Math.max(0, nowMs() - ms) / 60000);
+      if (m < 1) return "الآن";
+      if (m < 60) return "منذ " + m + " د";
+      const h = Math.floor(m / 60);
+      if (h < 24) return "منذ " + h + " س";
+      return "منذ " + Math.floor(h / 24) + " يوم";
+    }
+    const clock = (ms) => new Date(ms).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const stateSince = (r) => r.order && (r.state === "picked_up" ? r.order.picked_at : r.state === "arrived" ? r.order.arrived_at : r.order.declared_at);
+
+    /* ---------------- الدخول ---------------- */
+    function showGate(err) {
+      clearInterval(timer);
+      $("app").classList.add("hidden");
+      $("gate").classList.remove("hidden");
+      $("gateError").textContent = err || "";
+      $("keyInput").focus();
+    }
+    function showApp() {
+      $("gate").classList.add("hidden");
+      $("app").classList.remove("hidden");
+      initMap();
+    }
+    $("keyBtn").addEventListener("click", () => {
+      const k = $("keyInput").value.trim();
+      if (!k) return;
+      localStorage.setItem(KEY, k);
+      $("keyInput").value = "";
+      start();
+    });
+    $("keyInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("keyBtn").click(); });
+    $("outBtn").addEventListener("click", () => { localStorage.removeItem(KEY); showGate(""); });
+
+    async function api(path, opts = {}) {
+      const res = await fetch(path, {
+        ...opts,
+        headers: { ...(opts.headers || {}), "X-Admin-Key": localStorage.getItem(KEY) || "", "Content-Type": "application/json" },
+      });
+      const body = await res.json().catch(() => ({}));
+      return { status: res.status, body };
+    }
+
+    /* ---------------- التحميل ---------------- */
+    async function load() {
+      try {
+        const { status, body } = await api("/api/admin/overview");
+        if (status === 401 || status === 503) {
+          localStorage.removeItem(KEY);
+          return showGate(body.error || "مفتاح غير صحيح");
+        }
+        if (!body.ok) throw new Error("bad");
+        data = body;
+        skew = body.now - Date.now();
+        $("liveDot").classList.remove("off");
+        $("liveText").textContent = "مباشر، آخر تحديث " + clock(nowMs());
+        render();
+      } catch {
+        $("liveDot").classList.add("off");
+        $("liveText").textContent = "مفيش اتصال، بنحاول تاني...";
+      }
+    }
+    function start() {
+      if (!localStorage.getItem(KEY)) return showGate("");
+      showApp();
+      load();
+      clearInterval(timer);
+      timer = setInterval(() => { if (!document.hidden) load(); }, REFRESH_MS);
+    }
+    document.addEventListener("visibilitychange", () => { if (!document.hidden && localStorage.getItem(KEY)) load(); });
+
+    /* ---------------- العرض ---------------- */
+    const matches = (r) => {
+      if (filter === "late" && !r.late) return false;
+      if (filter === "nopush" && r.push) return false;
+      if (["idle", "declared", "arrived", "picked_up"].includes(filter) && r.state !== filter) return false;
+      if (query) {
+        const q = query.toLowerCase();
+        if (!String(r.name || "").toLowerCase().includes(q) && !String(r.id).toLowerCase().includes(q)) return false;
+      }
+      return true;
+    };
+    function counts() {
+      const c = { all: data.riders.length, idle: 0, declared: 0, arrived: 0, picked_up: 0, late: 0, nopush: 0 };
+      for (const r of data.riders) {
+        c[r.state] = (c[r.state] || 0) + 1;
+        if (r.late) c.late++;
+        if (!r.push) c.nopush++;
+      }
+      return c;
+    }
+
+    function renderPipeline() {
+      const c = counts();
+      const nav = $("pipeline");
+      nav.replaceChildren();
+      for (const t of TILES) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.style.setProperty("--c", t.css);
+        b.setAttribute("aria-pressed", String(filter === t.key));
+        b.innerHTML = '<span class="n num">' + (c[t.key] || 0) + '</span><span class="l">' + esc(t.label) + "</span>";
+        b.addEventListener("click", () => { filter = t.key; render(); });
+        nav.append(b);
+      }
+      const s = document.createElement("div");
+      s.className = "static";
+      s.innerHTML = '<span class="n num">' + ((data.stats && data.stats.delivered_today) || 0) + '</span><span class="l">سلّموا النهاردة</span>';
+      nav.append(s);
+    }
+
+    function renderList() {
+      const rows = data.riders.filter(matches).sort((a, b) =>
+        (b.late - a.late) || (PRIORITY[a.state] - PRIORITY[b.state]) || String(a.id).localeCompare(String(b.id), "en", { numeric: true }));
+      const ul = $("list");
+      ul.replaceChildren();
+      if (!rows.length) {
+        const li = document.createElement("li");
+        li.className = "empty";
+        li.textContent = data.riders.length
+          ? "مفيش مناديب بالتصفية دي."
+          : "لسه مفيش مناديب. اضغط «إضافة مناديب» فوق.";
+        ul.append(li);
+        return;
+      }
+      for (const r of rows) {
+        const st = STATES[r.state] || STATES.idle;
+        const li = document.createElement("li");
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "rider";
+        b.style.setProperty("--c", st.css);
+        const since = stateSince(r);
+        const parts = [];
+        if (r.late) parts.push('<span class="flag">متأخر في الرد</span>');
+        else if (r.prompt) parts.push("مستني ردّه");
+        if (since) parts.push("الحالة " + ago(since));
+        parts.push(r.loc ? "الموقع " + ago(r.loc.at) : "بدون موقع");
+        if (!r.push) parts.push('<span class="flag">بدون إشعارات</span>');
+        if (r.missed_today) parts.push("لم يرد " + r.missed_today + " مرة النهاردة");
+        b.innerHTML =
+          '<div class="t"><span class="name">' + esc(r.name || r.id) + '</span><span class="id num">' + esc(r.id) +
+          '</span><span class="state">' + esc(st.label) + '</span></div><div class="meta">' +
+          parts.map((p) => "<span>" + p + "</span>").join("") + "</div>";
+        b.addEventListener("click", () => focusRider(r.id));
+        li.append(b);
+        ul.append(li);
+      }
+    }
+
+    function renderEvents() {
+      const ul = $("events");
+      ul.replaceChildren();
+      if (!data.events.length) {
+        const li = document.createElement("li");
+        li.textContent = "مفيش أحداث لسه.";
+        ul.append(li);
+        return;
+      }
+      for (const e of data.events) {
+        const li = document.createElement("li");
+        li.innerHTML = "<span>" + esc(e.name || e.rider_id) + " " + esc(EVENT_LABELS[e.type] || e.type) +
+          '</span><span class="when">' + esc(ago(e.at)) + "</span>";
+        ul.append(li);
+      }
+    }
+
+    /* ---------------- الخريطة ---------------- */
+    function initMap() {
+      if (map) { map.invalidateSize(); return; }
+      if (typeof L === "undefined") {
+        const n = $("mapNote");
+        n.classList.remove("hidden");
+        n.textContent = "الخريطة ما اتحمّلتش. تأكد من الاتصال بالإنترنت وحدّث الصفحة. باقي اللوحة شغّالة.";
+        return;
+      }
+      map = L.map("map", { zoomControl: true }).setView([30.0444, 31.2357], 11);
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "© مساهمو OpenStreetMap",
+      }).addTo(map);
+      $("fitBtn").addEventListener("click", () => fit(true));
+      window.addEventListener("resize", () => map.invalidateSize());
+    }
+
+    function pinIcon(r) {
+      const st = STATES[r.state] || STATES.idle;
+      const stale = !r.loc || nowMs() - r.loc.at > STALE_LOC_MS;
+      const label = String(r.id).slice(-4);
+      return L.divIcon({
+        className: "pin-wrap",
+        iconSize: [0, 0],
+        html: '<div class="pin num' + (r.late ? " late" : "") + (stale ? " stale" : "") +
+          '" style="--fill:' + st.fill + ";--ink-on:" + st.on + '">' + esc(label) + "</div>",
+      });
+    }
+    function popupHtml(r) {
+      const st = STATES[r.state] || STATES.idle;
+      const since = stateSince(r);
+      return '<div class="popup"><b>' + esc(r.name || r.id) + "</b><div>رقم " + esc(r.id) + "</div><div>" + esc(st.label) +
+        (since ? "، " + esc(ago(since)) : "") + "</div>" + (r.late ? '<div class="flag">متأخر في الرد</div>' : "") +
+        "<div>آخر موقع: " + esc(ago(r.loc.at)) + (r.loc.accuracy ? "، دقة " + Math.round(r.loc.accuracy) + " م" : "") + "</div></div>";
+    }
+
+    function renderMap() {
+      if (!map) return;
+      const visible = new Set();
+      for (const r of data.riders) {
+        if (!r.loc || !matches(r)) continue;
+        visible.add(r.id);
+        const ll = [r.loc.lat, r.loc.lng];
+        let m = markers.get(r.id);
+        if (!m) {
+          m = L.marker(ll, { icon: pinIcon(r), title: r.name || r.id, keyboard: true }).addTo(map);
+          m.bindPopup(popupHtml(r));
+          markers.set(r.id, m);
+        } else {
+          m.setLatLng(ll);
+          m.setIcon(pinIcon(r));
+          m.setPopupContent(popupHtml(r));
+        }
+      }
+      for (const [id, m] of markers) {
+        if (!visible.has(id)) { map.removeLayer(m); markers.delete(id); }
+      }
+      $("fitBtn").classList.toggle("hidden", markers.size === 0);
+      const note = $("mapNote");
+      const anyLoc = data.riders.some((r) => r.loc);
+      note.classList.toggle("hidden", anyLoc || !data.riders.length);
+      if (!anyLoc && data.riders.length) note.textContent = "لسه ما وصلش موقع أي مندوب. المواقع بتظهر لما يضغطوا أزرار الأوردر أو يشغّلوا مشاركة الموقع.";
+      if (!fitted && markers.size) { fit(false); fitted = true; }
+    }
+    function fit(force) {
+      if (!map || !markers.size) return;
+      const pts = [...markers.values()].map((m) => m.getLatLng());
+      map.fitBounds(L.latLngBounds(pts), { padding: [48, 48], maxZoom: force ? 16 : 14 });
+    }
+    function focusRider(id) {
+      const r = data.riders.find((x) => x.id === id);
+      const m = markers.get(id);
+      if (!map || !r || !m) return;
+      map.setView([r.loc.lat, r.loc.lng], Math.max(map.getZoom(), 15));
+      m.openPopup();
+      if (window.matchMedia("(max-width: 900px)").matches) window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function render() {
+      renderPipeline();
+      renderList();
+      renderEvents();
+      renderMap();
+    }
+
+    $("search").addEventListener("input", (e) => { query = e.target.value.trim(); renderList(); renderMap(); });
+
+    /* ---------------- إضافة مناديب ---------------- */
+    $("addBtn").addEventListener("click", () => { $("addResult").textContent = ""; $("addDlg").showModal(); $("addText").focus(); });
+    $("addCancel").addEventListener("click", () => $("addDlg").close());
+    $("addGo").addEventListener("click", async () => {
+      const riders = [];
+      for (const line of $("addText").value.split(/\r?\n/)) {
+        const m = line.trim().match(/^([A-Za-z0-9_-]+)\s*(?:[,،\t]\s*|\s+)?(.*)$/);
+        if (m) riders.push({ id: m[1], name: m[2].trim() });
+        else if (line.trim()) riders.push({ id: line.trim(), name: "" });
+      }
+      const out = $("addResult");
+      if (!riders.length) { out.textContent = "اكتب مندوب واحد على الأقل."; return; }
+      out.textContent = "جاري الإضافة...";
+      try {
+        const { status, body } = await api("/api/admin/riders", { method: "POST", body: JSON.stringify({ riders }) });
+        if (status === 401) return showGate("المفتاح غير صحيح");
+        if (!body.ok) { out.textContent = body.error || "حصل خطأ."; return; }
+        out.textContent = "اتضاف " + body.added + " مندوب" + (body.existing ? "، و" + body.existing + " كانوا موجودين" : "") +
+          (body.invalid ? "، و" + body.invalid + " رقم غير صالح (حروف إنجليزي وأرقام بس)" : "") + ".";
+        if (body.added) { $("addText").value = ""; load(); }
+      } catch {
+        out.textContent = "تعذر الاتصال. جرّب تاني.";
+      }
+    });
+
+    start();
+  </script>
+</body>
+</html>
