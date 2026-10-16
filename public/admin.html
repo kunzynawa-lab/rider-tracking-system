@@ -1,534 +1,731 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex, nofollow">
-  <title>غرفة المتابعة</title>
-  <meta name="theme-color" content="#14213d">
+  <title>Rider Tracking · Admin</title>
+  <meta name="theme-color" content="#0f766e">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <style>
     :root {
-      --paper: #f1f4f8;
-      --surface: #ffffff;
-      --ink: #14213d;
-      --muted: #5b6b82;
-      --line: #d9e0e8;
-      --focus: #0b6bcb;
-      --late: #d92d20;
-      --done: #1e9e5a;
-      --idle: #8794a8;
-      --declared: #f0b429;
-      --arrived: #8b5cf6;
-      --picked: #1d8fe1;
-      --font: "IBM Plex Sans Arabic", Tahoma, Arial, sans-serif;
+      --bg: #f4f6f9; --surface: #fff; --text: #0f1b2d; --muted: #5d6b7e; --line: #e3e8ef;
+      --brand: #0f766e; --brand-d: #0b5d57; --brand-soft: #e3f4f2;
+      --idle: #64748b; --idle-soft: #eef1f5;
+      --amber: #b45309; --amber-soft: #fef3c7;
+      --violet: #6d28d9; --violet-soft: #ede9fe;
+      --blue: #1d4ed8; --blue-soft: #dbeafe;
+      --green: #15803d; --green-soft: #dcfce7;
+      --red: #b42318; --red-soft: #fee4e2;
+      --shadow: 0 1px 2px rgba(15,27,45,.05), 0 6px 20px rgba(15,27,45,.05);
+      --side: 232px;
     }
-    * { box-sizing: border-box; }
-    html, body { height: 100%; }
-    body {
-      margin: 0; background: var(--paper); color: var(--ink); font-family: var(--font);
-      line-height: 1.5; display: flex; flex-direction: column; min-height: 100dvh;
-    }
-    button { font: inherit; color: inherit; cursor: pointer; }
-    :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
-    .hidden { display: none !important; }
-    .num { font-variant-numeric: tabular-nums; }
-
-    /* ---- بوابة الدخول ---- */
-    #gate { margin: auto; width: min(92%, 380px); padding: 28px 0; }
-    #gate h1 { font-size: 24px; margin: 0 0 6px; }
-    #gate p { margin: 0 0 18px; color: var(--muted); }
-    #gate input {
-      width: 100%; padding: 14px; font: inherit; border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
-    }
-    #gate button {
-      width: 100%; margin-top: 12px; padding: 14px; border: 0; border-radius: 8px; background: var(--ink); color: #fff; font-weight: 700;
-    }
-    #gateError { color: var(--late); min-height: 24px; margin-top: 10px; }
-
-    /* ---- الشريط العلوي ---- */
-    header.bar {
-      display: flex; align-items: center; gap: 16px; padding: 10px 20px; background: var(--ink); color: #fff; flex-wrap: wrap;
-    }
-    header.bar h1 { font-size: 18px; margin: 0; }
-    .live { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: #cfd8e6; }
-    .dot { width: 10px; height: 10px; border-radius: 50%; background: #5ddb97; }
-    .dot.off { background: #ff8a80; }
-    .spacer { flex: 1; }
-    .bar button {
-      background: transparent; border: 1px solid #5b6f94; color: #fff; border-radius: 8px; padding: 6px 14px; font-size: 14px;
-    }
-    .bar button:hover { background: #22345a; }
-
-    /* ---- شريط المراحل (إحصائيات + فلتر) ---- */
-    nav.pipeline {
-      display: flex; background: var(--surface); border-bottom: 1px solid var(--line); overflow-x: auto;
-    }
-    nav.pipeline button, nav.pipeline .static {
-      flex: 1 0 118px; text-align: start; background: none; border: 0; border-inline-start: 1px solid var(--line);
-      border-top: 4px solid transparent; padding: 10px 16px 12px;
-    }
-    nav.pipeline button:first-child { border-inline-start: 0; }
-    nav.pipeline .n { display: block; font-size: 28px; font-weight: 700; line-height: 1.1; }
-    nav.pipeline .l { display: block; font-size: 13px; color: var(--muted); }
-    nav.pipeline button[aria-pressed="true"] { background: #f6f9fc; border-top-color: var(--c, var(--ink)); }
-    nav.pipeline button[aria-pressed="true"] .l { color: var(--ink); font-weight: 600; }
-    nav.pipeline button:hover { background: #f6f9fc; }
-    nav.pipeline .static { cursor: default; border-top-color: var(--done); }
-    nav.pipeline .static .n { color: var(--done); }
-
-    /* ---- اللوحة ---- */
-    .board { flex: 1; display: grid; grid-template-columns: 400px 1fr; min-height: 0; }
-    aside.side { display: flex; flex-direction: column; min-height: 0; background: var(--surface); border-inline-end: 1px solid var(--line); }
-    .search { padding: 12px; border-bottom: 1px solid var(--line); }
-    .search input { width: 100%; padding: 10px 12px; font: inherit; border: 1px solid var(--line); border-radius: 8px; }
-    #list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; min-height: 160px; }
-    #list li { border-bottom: 1px solid var(--line); }
-    .rider {
-      display: block; width: 100%; text-align: start; background: none; border: 0; padding: 10px 16px;
-      border-inline-start: 5px solid var(--c, var(--idle));
-    }
-    .rider:hover { background: #f6f9fc; }
-    .rider .t { display: flex; align-items: baseline; gap: 8px; }
-    .rider .name { font-weight: 700; }
-    .rider .id { color: var(--muted); font-size: 13px; }
-    .rider .state { margin-inline-start: auto; font-size: 13px; font-weight: 600; }
-    .rider .meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: var(--muted); margin-top: 2px; }
-    .flag { color: var(--late); font-weight: 700; }
-    .empty { padding: 28px 16px; color: var(--muted); text-align: center; }
-
-    .events { border-top: 1px solid var(--line); max-height: 26%; overflow-y: auto; background: #fafbfd; }
-    .events h2 { font-size: 14px; margin: 0; padding: 10px 16px 6px; color: var(--muted); font-weight: 600; }
-    .events ul { list-style: none; margin: 0; padding: 0 16px 10px; }
-    .events li { display: flex; gap: 8px; font-size: 13px; padding: 3px 0; }
-    .events .when { margin-inline-start: auto; color: var(--muted); }
-
-    .mapwrap { position: relative; min-height: 320px; }
-    #map { position: absolute; inset: 0; direction: ltr; background: #dfe6ee; }
-    #mapNote {
-      position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--muted);
-      pointer-events: none; z-index: 500;
-    }
-    .fit {
-      position: absolute; z-index: 600; top: 12px; inset-inline-end: 12px; background: var(--surface); border: 1px solid var(--line);
-      border-radius: 8px; padding: 6px 12px; font-size: 14px; box-shadow: 0 1px 4px rgba(20, 33, 61, .2);
-    }
-
-    /* ---- علامات الخريطة ---- */
-    .pin-wrap { background: none; border: 0; }
-    .pin {
-      position: absolute; transform: translate(-50%, -50%); display: grid; place-items: center; min-width: 34px; height: 34px;
-      padding: 0 8px; border-radius: 17px; background: var(--fill); color: var(--ink-on); border: 2px solid #fff;
-      font: 700 12px/1 var(--font); white-space: nowrap; box-shadow: 0 1px 4px rgba(20, 33, 61, .5);
-    }
-    .pin.stale { opacity: .55; border-style: dashed; border-color: var(--ink-on); }
-    .pin.late { box-shadow: 0 0 0 3px var(--late), 0 1px 4px rgba(20, 33, 61, .5); }
-    @media (prefers-reduced-motion: no-preference) {
-      .pin.late { animation: ring 1.6s ease-out infinite; }
-      @keyframes ring {
-        0% { box-shadow: 0 0 0 3px var(--late), 0 0 0 3px rgba(217, 45, 32, .5); }
-        100% { box-shadow: 0 0 0 3px var(--late), 0 0 0 16px rgba(217, 45, 32, 0); }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b1220; --surface: #121b2c; --text: #eaf0f7; --muted: #94a3b8; --line: #233046;
+        --brand: #2dd4bf; --brand-d: #14b8a6; --brand-soft: #0f2e2e;
+        --idle: #94a3b8; --idle-soft: #1b2638;
+        --amber: #fbbf24; --amber-soft: #3a2a08; --violet: #a78bfa; --violet-soft: #271f47;
+        --blue: #60a5fa; --blue-soft: #14284d; --green: #4ade80; --green-soft: #0f2f1c;
+        --red: #f87171; --red-soft: #3a1514; --shadow: 0 1px 2px rgba(0,0,0,.4);
       }
     }
-    .popup { direction: rtl; font-family: var(--font); min-width: 170px; }
-    .popup b { font-size: 15px; }
-    .popup div { margin-top: 2px; color: var(--muted); font-size: 13px; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 14.5px/1.5 Inter, "Noto Sans Arabic", system-ui, Tahoma, sans-serif; }
+    .hidden { display: none !important; }
+    button { font: inherit; cursor: pointer; }
+    :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+    h1 { font-size: 22px; margin: 0; } h2 { font-size: 15px; margin: 0; } h3 { font-size: 13px; margin: 0; color: var(--muted); font-weight: 600; }
+    .muted { color: var(--muted); } .num { font-variant-numeric: tabular-nums; }
 
-    /* ---- إضافة مناديب ---- */
-    dialog { border: 0; border-radius: 12px; padding: 22px; width: min(92vw, 440px); box-shadow: 0 10px 40px rgba(20, 33, 61, .35); font-family: var(--font); color: var(--ink); }
-    dialog::backdrop { background: rgba(20, 33, 61, .45); }
-    dialog h2 { margin: 0 0 4px; font-size: 18px; }
-    dialog p { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
-    dialog textarea { width: 100%; min-height: 150px; padding: 10px; font: inherit; direction: rtl; border: 1px solid var(--line); border-radius: 8px; resize: vertical; }
-    dialog .row { display: flex; gap: 10px; margin-top: 12px; }
-    dialog .row button { flex: 1; padding: 11px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); font-weight: 600; }
-    dialog .row button.primary { background: var(--ink); border-color: var(--ink); color: #fff; }
-    #addResult { margin-top: 10px; min-height: 22px; font-size: 14px; }
+    #gate { min-height: 100vh; display: grid; place-items: center; padding: 20px; }
+    .gate-card { width: 100%; max-width: 380px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 28px; box-shadow: var(--shadow); }
+    .gate-card img { width: 52px; height: 52px; border-radius: 14px; }
+    input, select, textarea { font: inherit; color: var(--text); background: var(--bg); border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px; width: 100%; }
+    input:focus, textarea:focus { border-color: var(--brand); outline: none; box-shadow: 0 0 0 3px var(--brand-soft); }
+    .btn { border: 0; border-radius: 10px; padding: 10px 16px; font-weight: 600; background: var(--brand-d); color: #fff; min-height: 40px; }
+    @media (prefers-color-scheme: dark) { .btn:not(.ghost) { color: #04201d; background: var(--brand); } }
+    .btn.ghost { background: var(--surface); color: var(--text); border: 1px solid var(--line); }
+    .btn.sm { padding: 5px 10px; min-height: 30px; font-size: 13px; }
+    .btn:disabled { opacity: .55; }
+    .err { color: var(--red); font-size: 13.5px; min-height: 20px; margin-top: 8px; }
 
-    @media (max-width: 900px) {
-      .board { grid-template-columns: 1fr; grid-template-rows: 44vh auto; }
-      .mapwrap { order: -1; min-height: 0; }
-      aside.side { border-inline-end: 0; }
-      #list { max-height: none; }
-      .events { max-height: none; }
+    #app { display: grid; grid-template-columns: var(--side) 1fr; min-height: 100vh; }
+    aside { background: var(--surface); border-inline-end: 1px solid var(--line); padding: 18px 14px; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 6px; }
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; padding: 4px 8px 16px; }
+    .logo img { width: 32px; height: 32px; border-radius: 9px; }
+    nav { display: grid; gap: 4px; }
+    nav button { display: flex; align-items: center; gap: 10px; text-align: start; width: 100%; background: transparent; border: 0; border-radius: 10px; padding: 10px 12px; font-weight: 600; color: var(--muted); }
+    nav button[aria-current=page] { background: var(--brand-soft); color: var(--brand-d); }
+    @media (prefers-color-scheme: dark) { nav button[aria-current=page] { color: var(--brand); } }
+    .side-foot { margin-top: auto; display: grid; gap: 8px; }
+    .seg { display: flex; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+    .seg button { flex: 1; border: 0; background: transparent; padding: 6px 8px; border-radius: 8px; font-weight: 600; color: var(--muted); font-size: 13px; }
+    .seg button[aria-pressed=true] { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+    main { padding: 22px 26px 40px; min-width: 0; }
+    .head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+    .head .sub { color: var(--muted); font-size: 13px; }
+    .live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); margin-inline-end: 6px; animation: pulse 1.6s infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(21,128,61,.5);} 100% { box-shadow: 0 0 0 8px rgba(21,128,61,0);} }
+    @media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+    .card > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .kpi { padding: 14px 16px; }
+    .kpi .v { font-size: 26px; font-weight: 700; line-height: 1.2; margin-top: 4px; }
+    .kpi .s { font-size: 12.5px; color: var(--muted); }
+    .kpi.warn .v { color: var(--red); } .kpi.good .v { color: var(--green); }
+    .grid2 { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px; }
+    .stack { display: grid; gap: 16px; align-content: start; min-width: 0; }
+    .card { min-width: 0; }
+
+    .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 999px; white-space: nowrap; }
+    .b-idle { background: var(--idle-soft); color: var(--idle); } .b-declared { background: var(--amber-soft); color: var(--amber); }
+    .b-arrived { background: var(--violet-soft); color: var(--violet); } .b-picked_up { background: var(--blue-soft); color: var(--blue); }
+    .b-late { background: var(--red-soft); color: var(--red); } .b-green { background: var(--green-soft); color: var(--green); }
+
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 12px; font-weight: 600; font-size: 13px; color: var(--muted); }
+    .chip[aria-pressed=true] { background: var(--brand-d); border-color: var(--brand-d); color: #fff; }
+    @media (prefers-color-scheme: dark) { .chip[aria-pressed=true] { background: var(--brand); color: #04201d; border-color: var(--brand); } }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: start; padding: 10px 14px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    th { font-size: 12px; color: var(--muted); font-weight: 600; background: var(--bg); position: sticky; top: 0; }
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: var(--bg); }
+    .scroll { overflow: auto; max-height: 460px; }
+    .rname { font-weight: 600; } .rid { color: var(--muted); font-size: 12px; }
+    .bar { height: 6px; border-radius: 3px; background: var(--idle-soft); overflow: hidden; min-width: 70px; }
+    .bar > i { display: block; height: 100%; border-radius: 3px; }
+
+    .idle-list { display: grid; }
+    .idle-row { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 11px 16px; border-bottom: 1px solid var(--line); align-items: center; }
+    .idle-row:last-child { border-bottom: 0; }
+    .idle-row .bar { grid-column: 1 / -1; }
+    .idle-row .dur { font-weight: 700; }
+    .sev-ok { color: var(--green); } .sev-mid { color: var(--amber); } .sev-hi { color: var(--red); }
+    .idle-sum { display: flex; gap: 20px; flex-wrap: wrap; padding: 12px 16px; background: var(--bg); border-bottom: 1px solid var(--line); font-size: 13px; }
+    .idle-sum b { font-size: 15px; }
+    .empty { padding: 26px 16px; text-align: center; color: var(--muted); }
+
+    #map { height: 400px; border-radius: 0 0 14px 14px; z-index: 0; }
+    .legend { display: flex; gap: 12px; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--line); font-size: 12.5px; color: var(--muted); }
+    .legend span { display: inline-flex; align-items: center; gap: 5px; }
+    .legend i { font-style: normal; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font-size: 12px; color: #fff; }
+    .pin { width: 36px; height: 36px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.45); display: grid; place-items: center; font-size: 18px; line-height: 1; }
+    .pin.late { box-shadow: 0 0 0 3px #d92d20, 0 2px 6px rgba(0,0,0,.45); }
+    .pin-label { position: absolute; top: 38px; left: 50%; transform: translateX(-50%); background: rgba(15,27,45,.85); color: #fff; font: 600 11px/1.3 Inter, sans-serif; padding: 1px 6px; border-radius: 6px; white-space: nowrap; }
+
+    .feed { max-height: 320px; overflow: auto; }
+    .feed ul { list-style: none; margin: 0; padding: 0; }
+    .feed li { display: flex; gap: 10px; padding: 9px 16px; border-bottom: 1px solid var(--line); align-items: baseline; }
+    .feed time { color: var(--muted); font-size: 12px; min-width: 44px; direction: ltr; }
+
+    .chart { display: flex; align-items: flex-end; gap: 4px; height: 160px; padding: 8px 16px 8px; }
+    .chart .col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0; }
+    .chart .col i { width: 100%; background: var(--brand); border-radius: 4px 4px 0 0; min-height: 2px; opacity: .9; }
+    .chart .col span { font-size: 10px; color: var(--muted); margin-top: 4px; }
+    .chart .col em { font-size: 10px; font-style: normal; color: var(--muted); }
+    .funnel { display: grid; gap: 10px; padding: 14px 16px; }
+    .funnel .f { display: grid; grid-template-columns: 120px 1fr 44px; gap: 10px; align-items: center; font-size: 13px; }
+    .funnel .bar { height: 10px; }
+
+    dialog { border: 0; border-radius: 16px; padding: 22px; width: min(480px, 92vw); background: var(--surface); color: var(--text); box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+    dialog::backdrop { background: rgba(8,15,28,.55); }
+    .toast { position: fixed; bottom: 20px; inset-inline-start: 50%; transform: translateX(-50%); background: #0f1b2d; color: #fff; padding: 10px 16px; border-radius: 10px; z-index: 50; }
+
+    @media (max-width: 1180px) { .grid2 { grid-template-columns: 1fr; } }
+    @media (max-width: 960px) {
+      #app { grid-template-columns: 1fr; }
+      aside { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; padding: 10px 12px; border-inline-end: 0; border-bottom: 1px solid var(--line); }
+      .logo { padding: 0 8px 0 0; } nav { display: flex; order: 3; width: 100%; overflow: auto; }
+      nav button { width: auto; white-space: nowrap; padding: 8px 12px; }
+      .side-foot { margin: 0 0 0 auto; display: flex; align-items: center; }
+      main { padding: 16px 14px 36px; }
+      .grid2 { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
   <section id="gate" class="hidden">
-    <h1>غرفة المتابعة</h1>
-    <p>اكتب مفتاح الإدارة للدخول.</p>
-    <input id="keyInput" type="password" autocomplete="current-password" placeholder="مفتاح الإدارة">
-    <button id="keyBtn">دخول</button>
-    <div id="gateError" role="alert"></div>
+    <form class="gate-card" id="gateForm">
+      <img src="/icon-192.png" alt="">
+      <h1 style="margin:14px 0 4px" data-i="gateTitle"></h1>
+      <p class="muted" style="margin:0 0 16px" data-i="gateSub"></p>
+      <label for="keyInput" style="font-weight:600;display:block;margin-bottom:6px" data-i="adminKey"></label>
+      <input id="keyInput" type="password" autocomplete="current-password" dir="ltr" required>
+      <div class="err" id="gateErr" role="alert"></div>
+      <button class="btn" style="width:100%;margin-top:8px" type="submit" data-i="signIn"></button>
+      <div class="seg" style="margin-top:16px"><button type="button" data-lang="en" aria-pressed="true">English</button><button type="button" data-lang="ar" aria-pressed="false">العربية</button></div>
+    </form>
   </section>
 
-  <div id="app" class="hidden" style="display:contents">
-    <header class="bar">
-      <h1>غرفة المتابعة</h1>
-      <span class="live"><span class="dot" id="liveDot"></span><span id="liveText">جاري التحميل...</span></span>
-      <span class="spacer"></span>
-      <button id="addBtn">إضافة مناديب</button>
-      <button id="outBtn">خروج</button>
-    </header>
-
-    <nav class="pipeline" id="pipeline" aria-label="تصفية المناديب حسب الحالة"></nav>
-
-    <div class="board">
-      <aside class="side">
-        <div class="search"><input id="search" type="search" placeholder="ابحث بالاسم أو الرقم" aria-label="بحث عن مندوب"></div>
-        <ul id="list"></ul>
-        <section class="events">
-          <h2>آخر الأحداث</h2>
-          <ul id="events"></ul>
-        </section>
-      </aside>
-      <div class="mapwrap">
-        <div id="map" role="application" aria-label="خريطة المناديب"></div>
-        <div id="mapNote" class="hidden"></div>
-        <button class="fit hidden" id="fitBtn">عرض كل المناديب</button>
+  <div id="app" class="hidden">
+    <aside>
+      <div class="logo"><img src="/icon-192.png" alt=""><span data-i="brand"></span></div>
+      <nav id="nav">
+        <button data-page="live" aria-current="page">📍 <span data-i="navLive"></span></button>
+        <button data-page="reports">📊 <span data-i="navReports"></span></button>
+        <button data-page="riders">👥 <span data-i="navRiders"></span></button>
+      </nav>
+      <div class="side-foot">
+        <div class="seg" id="langSeg"><button data-lang="en" aria-pressed="true">EN</button><button data-lang="ar" aria-pressed="false">عربي</button></div>
+        <button class="btn ghost sm" id="signOut" data-i="signOut"></button>
       </div>
-    </div>
+    </aside>
+
+    <main>
+      <section id="pg-live">
+        <div class="head">
+          <div><h1 data-i="liveTitle"></h1><div class="sub"><span class="live-dot"></span><span id="updated"></span></div></div>
+          <div class="chips" id="filters"></div>
+        </div>
+        <div class="kpis" id="liveKpis"></div>
+        <div class="grid2">
+          <div class="stack">
+            <div class="card">
+              <header><h2 data-i="idleBoard"></h2><span class="badge b-idle" id="idleCount"></span></header>
+              <div class="idle-sum" id="idleSum"></div>
+              <div class="idle-list scroll" id="idleList"></div>
+            </div>
+            <div class="card">
+              <header><h2 data-i="allRiders"></h2><span class="muted" id="listCount"></span></header>
+              <div class="scroll"><table><thead><tr id="ridersHead"></tr></thead><tbody id="ridersBody"></tbody></table></div>
+            </div>
+          </div>
+          <div class="stack">
+            <div class="card">
+              <header><h2 data-i="map"></h2><span class="muted" id="mapCount"></span></header>
+              <div class="legend" id="legend"></div>
+              <div id="map"></div>
+            </div>
+            <div class="card"><header><h2 data-i="activity"></h2></header><div class="feed"><ul id="feed"></ul></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="pg-reports" class="hidden">
+        <div class="head">
+          <div><h1 data-i="reportsTitle"></h1><div class="sub" id="rangeLabel"></div></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <div class="chips" id="ranges"></div>
+            <button class="btn ghost sm" id="exportRiders" data-i="exportRiders"></button>
+            <button class="btn ghost sm" id="exportOrders" data-i="exportOrders"></button>
+          </div>
+        </div>
+        <div class="kpis" id="repKpis"></div>
+        <div class="grid2" style="margin-bottom:16px">
+          <div class="card"><header><h2 data-i="byHour"></h2></header><div class="chart" id="hourChart"></div></div>
+          <div class="card"><header><h2 data-i="funnel"></h2></header><div class="funnel" id="funnel"></div></div>
+        </div>
+        <div class="card" id="dayCard" style="margin-bottom:16px"><header><h2 data-i="byDay"></h2></header><div class="chart" id="dayChart"></div></div>
+        <div class="card" style="margin-bottom:16px">
+          <header><h2 data-i="riderPerf"></h2></header>
+          <div class="scroll"><table><thead><tr id="perfHead"></tr></thead><tbody id="perfBody"></tbody></table></div>
+        </div>
+        <div class="card">
+          <header><h2 data-i="orderLog"></h2><span class="muted" id="orderLogNote"></span></header>
+          <div class="scroll"><table><thead><tr id="logHead"></tr></thead><tbody id="logBody"></tbody></table></div>
+        </div>
+      </section>
+
+      <section id="pg-riders" class="hidden">
+        <div class="head">
+          <div><h1 data-i="ridersTitle"></h1><div class="sub" id="ridersSub"></div></div>
+          <div style="display:flex;gap:8px"><input id="riderSearch" style="width:220px" data-ph="search"><button class="btn" id="addBtn" data-i="addRiders"></button></div>
+        </div>
+        <div class="card"><div class="scroll" style="max-height:none"><table><thead><tr id="mgHead"></tr></thead><tbody id="mgBody"></tbody></table></div></div>
+      </section>
+    </main>
   </div>
 
   <dialog id="addDlg">
-    <h2>إضافة مناديب</h2>
-    <p>اكتب كل مندوب في سطر: الرقم ثم الاسم.<br>مثال: <span dir="ltr">1002, أحمد محمد</span></p>
-    <textarea id="addText" placeholder="1002, أحمد&#10;1003, محمد"></textarea>
-    <div id="addResult" role="status"></div>
-    <div class="row">
-      <button id="addCancel">إغلاق</button>
-      <button id="addGo" class="primary">إضافة</button>
-    </div>
+    <form method="dialog" id="addForm">
+      <h2 style="font-size:18px;margin-bottom:6px" data-i="addRiders"></h2>
+      <p class="muted" style="margin:0 0 12px" data-i="addHelp"></p>
+      <textarea id="addText" rows="8" dir="ltr" placeholder="1001, Ahmed&#10;1002, Omar&#10;1003"></textarea>
+      <div class="err" id="addErr" role="alert"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+        <button type="button" class="btn ghost" id="addCancel" data-i="cancel"></button>
+        <button type="submit" class="btn" id="addSave" data-i="save"></button>
+      </div>
+    </form>
   </dialog>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script>
-    const $ = (id) => document.getElementById(id);
-    const KEY = "adminKey";
-    const REFRESH_MS = 15000;
-    const STALE_LOC_MS = 10 * 60 * 1000;
+  const I18N = {
+    en: {
+      dir: "ltr", brand: "Rider Tracking", gateTitle: "Admin sign-in", gateSub: "Enter the admin key to continue.", adminKey: "Admin key", signIn: "Sign in", signOut: "Sign out",
+      navLive: "Live", navReports: "Reports", navRiders: "Riders",
+      liveTitle: "Live operations", updatedAt: "Updated {t}", idleBoard: "Idle riders", allRiders: "All riders", map: "Live map", activity: "Recent activity",
+      riders: "riders", pins: "{n} on map", noPins: "No locations yet",
+      k_total: "Active riders", k_order: "On an order", k_idle: "Idle now", k_deliv: "Delivered today", k_late: "No response", k_push: "Notifications off",
+      s_total: "registered", s_order: "{p}% of riders", s_idle: "available for orders", s_deliv: "completed orders", s_late: "questions unanswered", s_push: "can't be asked",
+      f_all: "All", f_idle: "Idle", f_declared: "To restaurant", f_arrived: "At restaurant", f_picked_up: "At customer", f_late: "No response", f_push: "Notifications off",
+      st_idle: "Idle", st_declared: "To restaurant", st_arrived: "At restaurant", st_picked_up: "Delivering to customer",
+      lg_idle: "Idle", lg_declared: "Heading to restaurant", lg_arrived: "At restaurant", lg_picked_up: "Heading to customer",
+      c_rider: "Rider", c_status: "Status", c_time: "In status", c_seen: "Last seen", c_notif: "Alerts", c_deliv: "Delivered", c_asked: "Question",
+      q_have_order: "Has order?", q_picked_up: "Picked up?", q_delivered: "Delivered?",
+      idleUnknown: "no data yet", noIdle: "Nobody is idle right now. 🎉", sumLongest: "Longest", sumAvg: "Average", sumOver60: "Over 1 hour", sumOver30: "Over 30 min",
+      never: "never", ago: "{d} ago", now: "just now", on: "On", off: "Off", noRiders: "No riders match.",
+      ev_declared: "has an order", ev_arrived: "arrived at the restaurant", ev_picked_up: "picked up the order", ev_delivered: "delivered the order", ev_cancelled: "cancelled the order", noEvents: "No activity yet.",
+      reportsTitle: "Order reports", r_today: "Today", r_yesterday: "Yesterday", r_7d: "Last 7 days", r_30d: "Last 30 days",
+      rk_orders: "Orders", rk_deliv: "Delivered", rk_cancel: "Cancelled / expired", rk_total: "Avg. total time", rk_pick: "Avg. time to pickup", rk_wait: "Avg. wait at restaurant", rk_trip: "Avg. delivery trip", rk_resp: "Response rate", rk_respt: "Avg. response time", rk_util: "Utilisation", rk_missed: "Missed questions",
+      rs_declared: "declared by riders", rs_rate: "{p}% completion", rs_total: "declared → delivered", rs_pick: "declared → picked up", rs_wait: "arrived → picked up", rs_trip: "picked up → delivered", rs_resp: "of questions answered", rs_util: "of working time on orders", rs_missed: "no answer",
+      byHour: "Orders by hour", byDay: "Orders by day", funnel: "Order funnel", fn_declared: "Declared", fn_arrived: "Reached restaurant", fn_picked: "Picked up", fn_deliv: "Delivered",
+      riderPerf: "Rider performance", orderLog: "Order log", logNote: "latest {n}",
+      p_orders: "Orders", p_deliv: "Delivered", p_cancel: "Cancelled", p_total: "Avg. time", p_resp: "Response", p_missed: "Missed", p_util: "Utilisation", p_busy: "Busy time",
+      l_id: "#", l_rider: "Rider", l_status: "Status", l_start: "Started", l_pick: "Pickup", l_end: "Delivered", l_dur: "Total",
+      os_active: "Active", os_delivered: "Delivered", os_cancelled: "Cancelled", os_expired: "Expired",
+      exportRiders: "Export riders CSV", exportOrders: "Export orders CSV", noData: "No data for this period.",
+      ridersTitle: "Riders", addRiders: "Add riders", addHelp: "One rider per line: ID, then name (optional). IDs may contain letters, digits, - and _.", search: "Search by ID or name", cancel: "Cancel", save: "Save",
+      m_id: "ID", m_name: "Name", m_status: "Status", m_push: "Notifications", m_action: "", activeN: "{a} active · {t} total",
+      deactivate: "Deactivate", activate: "Activate", inactive: "Inactive", active: "Active",
+      added: "Added {a} · already existed {e}{i}", invalidN: " · invalid {n}", nothing: "Type at least one rider.",
+      e_conn: "Could not connect", e_key: "Wrong admin key", e_missing: "ADMIN_KEY is not set in Cloudflare", e_generic: "Something went wrong", e_loading: "Could not load data",
+      min: "m", hr: "h", day: "d", sec: "s",
+    },
+    ar: {
+      dir: "rtl", brand: "متابعة المناديب", gateTitle: "دخول الإدارة", gateSub: "أدخل مفتاح الإدارة للمتابعة.", adminKey: "مفتاح الإدارة", signIn: "دخول", signOut: "خروج",
+      navLive: "المباشر", navReports: "التقارير", navRiders: "المناديب",
+      liveTitle: "العمليات المباشرة", updatedAt: "آخر تحديث {t}", idleBoard: "المناديب الخاملون", allRiders: "كل المناديب", map: "الخريطة المباشرة", activity: "آخر النشاط",
+      riders: "مندوب", pins: "{n} على الخريطة", noPins: "لا توجد مواقع بعد",
+      k_total: "المناديب النشطون", k_order: "لديهم طلب", k_idle: "خاملون الآن", k_deliv: "تم تسليمها اليوم", k_late: "بدون رد", k_push: "الإشعارات متوقفة",
+      s_total: "مسجّل", s_order: "{p}% من المناديب", s_idle: "متاحون للطلبات", s_deliv: "طلب مكتمل", s_late: "أسئلة بلا إجابة", s_push: "لا يمكن سؤالهم",
+      f_all: "الكل", f_idle: "خامل", f_declared: "في الطريق للمطعم", f_arrived: "عند المطعم", f_picked_up: "عند العميل", f_late: "بدون رد", f_push: "الإشعارات متوقفة",
+      st_idle: "خامل", st_declared: "في الطريق للمطعم", st_arrived: "عند المطعم", st_picked_up: "في الطريق للعميل",
+      lg_idle: "خامل", lg_declared: "في الطريق للمطعم", lg_arrived: "عند المطعم", lg_picked_up: "في الطريق للعميل",
+      c_rider: "المندوب", c_status: "الحالة", c_time: "المدة بالحالة", c_seen: "آخر ظهور", c_notif: "الإشعارات", c_deliv: "التسليم", c_asked: "السؤال",
+      q_have_order: "هل معه طلب؟", q_picked_up: "هل استلم؟", q_delivered: "هل سلّم؟",
+      idleUnknown: "لا توجد بيانات بعد", noIdle: "لا أحد خامل الآن. 🎉", sumLongest: "الأطول", sumAvg: "المتوسط", sumOver60: "أكثر من ساعة", sumOver30: "أكثر من 30 د",
+      never: "لم يظهر", ago: "منذ {d}", now: "الآن", on: "مفعّلة", off: "متوقفة", noRiders: "لا يوجد مناديب مطابقون.",
+      ev_declared: "معه طلب", ev_arrived: "وصل المطعم", ev_picked_up: "استلم الطلب", ev_delivered: "سلّم الطلب", ev_cancelled: "ألغى الطلب", noEvents: "لا يوجد نشاط بعد.",
+      reportsTitle: "تقارير الطلبات", r_today: "اليوم", r_yesterday: "أمس", r_7d: "آخر 7 أيام", r_30d: "آخر 30 يوماً",
+      rk_orders: "الطلبات", rk_deliv: "تم تسليمها", rk_cancel: "ملغاة / منتهية", rk_total: "متوسط زمن الطلب", rk_pick: "متوسط زمن الاستلام", rk_wait: "متوسط الانتظار بالمطعم", rk_trip: "متوسط زمن التوصيل", rk_resp: "نسبة الرد", rk_respt: "متوسط زمن الرد", rk_util: "نسبة الاستغلال", rk_missed: "أسئلة بلا رد",
+      rs_declared: "سجّلها المناديب", rs_rate: "{p}% اكتمال", rs_total: "من التسجيل للتسليم", rs_pick: "من التسجيل للاستلام", rs_wait: "من الوصول للاستلام", rs_trip: "من الاستلام للتسليم", rs_resp: "من الأسئلة تمت الإجابة عنها", rs_util: "من وقت العمل في طلبات", rs_missed: "بدون إجابة",
+      byHour: "الطلبات حسب الساعة", byDay: "الطلبات حسب اليوم", funnel: "مراحل الطلب", fn_declared: "سُجّل", fn_arrived: "وصل المطعم", fn_picked: "تم الاستلام", fn_deliv: "تم التسليم",
+      riderPerf: "أداء المناديب", orderLog: "سجل الطلبات", logNote: "آخر {n}",
+      p_orders: "الطلبات", p_deliv: "المسلّمة", p_cancel: "الملغاة", p_total: "متوسط الزمن", p_resp: "الرد", p_missed: "بدون رد", p_util: "الاستغلال", p_busy: "وقت الانشغال",
+      l_id: "#", l_rider: "المندوب", l_status: "الحالة", l_start: "البداية", l_pick: "الاستلام", l_end: "التسليم", l_dur: "الإجمالي",
+      os_active: "جارٍ", os_delivered: "تم التسليم", os_cancelled: "ملغى", os_expired: "منتهي",
+      exportRiders: "تصدير المناديب CSV", exportOrders: "تصدير الطلبات CSV", noData: "لا توجد بيانات لهذه الفترة.",
+      ridersTitle: "المناديب", addRiders: "إضافة مناديب", addHelp: "مندوب في كل سطر: الرقم ثم الاسم (اختياري). يمكن أن يحتوي الرقم على حروف وأرقام و - و _.", search: "ابحث بالرقم أو الاسم", cancel: "إلغاء", save: "حفظ",
+      m_id: "الرقم", m_name: "الاسم", m_status: "الحالة", m_push: "الإشعارات", m_action: "", activeN: "{a} نشط · {t} إجمالي",
+      deactivate: "إيقاف", activate: "تفعيل", inactive: "متوقف", active: "نشط",
+      added: "تمت إضافة {a} · موجود مسبقاً {e}{i}", invalidN: " · غير صالح {n}", nothing: "اكتب مندوباً واحداً على الأقل.",
+      e_conn: "تعذّر الاتصال", e_key: "مفتاح الإدارة غير صحيح", e_missing: "ADMIN_KEY غير مضبوط في Cloudflare", e_generic: "حدث خطأ", e_loading: "تعذّر تحميل البيانات",
+      min: "د", hr: "س", day: "ي", sec: "ث",
+    },
+  };
 
-    const STATES = {
-      idle:      { label: "مفيش أوردر",       fill: "#8794a8", on: "#ffffff", css: "var(--idle)" },
-      declared:  { label: "معه أوردر",        fill: "#f0b429", on: "#3b2a00", css: "var(--declared)" },
-      arrived:   { label: "عند المطعم",       fill: "#8b5cf6", on: "#ffffff", css: "var(--arrived)" },
-      picked_up: { label: "في الطريق للعميل", fill: "#1d8fe1", on: "#ffffff", css: "var(--picked)" },
-    };
-    const PRIORITY = { picked_up: 1, arrived: 2, declared: 3, idle: 4 };
-    const TILES = [
-      { key: "all", label: "كل المناديب", css: "var(--ink)" },
-      { key: "idle", label: STATES.idle.label, css: STATES.idle.css },
-      { key: "declared", label: STATES.declared.label, css: STATES.declared.css },
-      { key: "arrived", label: STATES.arrived.label, css: STATES.arrived.css },
-      { key: "picked_up", label: STATES.picked_up.label, css: STATES.picked_up.css },
-      { key: "late", label: "متأخر في الرد", css: "var(--late)" },
-      { key: "nopush", label: "إشعاراته مقفولة", css: "var(--muted)" },
-    ];
-    const EVENT_LABELS = {
-      declared: "أعلن إن معاه أوردر", arrived: "وصل المطعم", picked_up: "استلم الأوردر",
-      delivered: "سلّم الأوردر", cancelled: "ألغى الأوردر",
-    };
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const ls = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} }, del(k) { try { localStorage.removeItem(k); } catch {} } };
+  const cleanKey = (s) => String(s || "").replace(/[^\x21-\x7E]/g, "");
 
-    let data = { riders: [], stats: {}, events: [], now: Date.now() };
-    let skew = 0;
-    let filter = "all";
-    let query = "";
-    let map = null;
-    const markers = new Map();
-    let fitted = false;
-    let timer = null;
+  let lang = ls.get("adminLang") === "ar" ? "ar" : "en";
+  const T = (k, v) => {
+    let s = (I18N[lang][k] ?? I18N.en[k] ?? k);
+    if (v) for (const x in v) s = s.replace("{" + x + "}", v[x]);
+    return s;
+  };
+  let key = cleanKey(ls.get("adminKey"));
+  let page = "live", filter = "all", range = "today";
+  let overview = null, report = null, manage = null;
 
-    const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-    const nowMs = () => Date.now() + skew;
-    function ago(ms) {
-      if (!ms) return "";
-      const m = Math.floor(Math.max(0, nowMs() - ms) / 60000);
-      if (m < 1) return "الآن";
-      if (m < 60) return "منذ " + m + " د";
-      const h = Math.floor(m / 60);
-      if (h < 24) return "منذ " + h + " س";
-      return "منذ " + Math.floor(h / 24) + " يوم";
+  const dur = (ms) => {
+    if (ms == null || !isFinite(ms)) return "–";
+    const s = Math.max(0, Math.round(ms / 1000));
+    if (s < 60) return s + T("sec");
+    const m = Math.round(s / 60);
+    if (m < 60) return m + T("min");
+    const h = Math.floor(m / 60), mm = m % 60;
+    if (h < 24) return h + T("hr") + (mm ? " " + mm + T("min") : "");
+    return Math.floor(h / 24) + T("day") + " " + (h % 24) + T("hr");
+  };
+  const ago = (ms, now) => (ms ? (now - ms < 45000 ? T("now") : T("ago", { d: dur(now - ms) })) : T("never"));
+  const hhmm = (ms) => (ms ? new Date(ms).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "–");
+  const pct = (x) => (x == null ? "–" : Math.round(x * 100) + "%");
+
+  function toast(text) {
+    const d = document.createElement("div");
+    d.className = "toast"; d.textContent = text; document.body.append(d);
+    setTimeout(() => d.remove(), 3500);
+  }
+
+  async function api(path, opts = {}) {
+    let res;
+    try {
+      res = await fetch(path, { ...opts, headers: { ...(opts.headers || {}), "X-Admin-Key": cleanKey(key), ...(opts.body ? { "Content-Type": "application/json" } : {}) } });
+    } catch (e) {
+      throw { code: "conn", message: T("e_conn") + (e && e.message ? " (" + e.message + ")" : "") };
     }
-    const clock = (ms) => new Date(ms).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    const stateSince = (r) => r.order && (r.state === "picked_up" ? r.order.picked_at : r.state === "arrived" ? r.order.arrived_at : r.order.declared_at);
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 401) throw { code: "key", message: T("e_key") };
+    if (res.status === 503) throw { code: "missing", message: T("e_missing") };
+    if (!res.ok || data.ok === false) throw { code: "generic", message: data.error || T("e_generic") };
+    return data;
+  }
 
-    /* ---------------- الدخول ---------------- */
-    function showGate(err) {
-      clearInterval(timer);
-      $("app").classList.add("hidden");
-      $("gate").classList.remove("hidden");
-      $("gateError").textContent = err || "";
-      $("keyInput").focus();
-    }
-    function showApp() {
-      $("gate").classList.add("hidden");
-      $("app").classList.remove("hidden");
-      initMap();
-    }
-    $("keyBtn").addEventListener("click", () => {
-      const k = $("keyInput").value.trim();
-      if (!k) return;
-      localStorage.setItem(KEY, k);
+  function applyStatic() {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = I18N[lang].dir;
+    document.querySelectorAll("[data-i]").forEach((el) => (el.textContent = T(el.dataset.i)));
+    document.querySelectorAll("[data-ph]").forEach((el) => (el.placeholder = T(el.dataset.ph)));
+    document.querySelectorAll("[data-lang]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
+    document.title = T("brand") + " · Admin";
+  }
+  function setLang(l) { lang = l; ls.set("adminLang", l); applyStatic(); renderAll(); }
+  document.querySelectorAll("[data-lang]").forEach((b) => b.addEventListener("click", () => setLang(b.dataset.lang)));
+
+  function go(p) {
+    page = p;
+    ["live", "reports", "riders"].forEach((x) => $("pg-" + x).classList.toggle("hidden", x !== p));
+    document.querySelectorAll("#nav button").forEach((b) => (b.dataset.page === p ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current")));
+    if (p === "live") { loadLive(); setTimeout(() => map && map.invalidateSize(), 50); }
+    if (p === "reports") loadReport();
+    if (p === "riders") loadRiders();
+  }
+  document.querySelectorAll("#nav button").forEach((b) => b.addEventListener("click", () => go(b.dataset.page)));
+
+  function showGate(msg) {
+    $("app").classList.add("hidden");
+    $("gate").classList.remove("hidden");
+    $("gateErr").textContent = msg || "";
+    stopPolling();
+  }
+  function showApp() {
+    $("gate").classList.add("hidden");
+    $("app").classList.remove("hidden");
+    go(page);
+    startPolling();
+  }
+  $("gateForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    key = cleanKey($("keyInput").value);
+    $("gateErr").textContent = "";
+    try {
+      await api("/api/admin/overview");
+      ls.set("adminKey", key);
       $("keyInput").value = "";
-      start();
-    });
-    $("keyInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("keyBtn").click(); });
-    $("outBtn").addEventListener("click", () => { localStorage.removeItem(KEY); showGate(""); });
-
-    async function api(path, opts = {}) {
-      const res = await fetch(path, {
-        ...opts,
-        headers: { ...(opts.headers || {}), "X-Admin-Key": localStorage.getItem(KEY) || "", "Content-Type": "application/json" },
-      });
-      const body = await res.json().catch(() => ({}));
-      return { status: res.status, body };
-    }
-
-    /* ---------------- التحميل ---------------- */
-    async function load() {
-      try {
-        const { status, body } = await api("/api/admin/overview");
-        if (status === 401 || status === 503) {
-          localStorage.removeItem(KEY);
-          return showGate(body.error || "مفتاح غير صحيح");
-        }
-        if (!body.ok) throw new Error("bad");
-        data = body;
-        skew = body.now - Date.now();
-        $("liveDot").classList.remove("off");
-        $("liveText").textContent = "مباشر، آخر تحديث " + clock(nowMs());
-        render();
-      } catch {
-        $("liveDot").classList.add("off");
-        $("liveText").textContent = "مفيش اتصال، بنحاول تاني...";
-      }
-    }
-    function start() {
-      if (!localStorage.getItem(KEY)) return showGate("");
       showApp();
-      load();
-      clearInterval(timer);
-      timer = setInterval(() => { if (!document.hidden) load(); }, REFRESH_MS);
-    }
-    document.addEventListener("visibilitychange", () => { if (!document.hidden && localStorage.getItem(KEY)) load(); });
+    } catch (err) { $("gateErr").textContent = err.message; }
+  });
+  $("signOut").addEventListener("click", () => { ls.del("adminKey"); key = ""; showGate(); });
 
-    /* ---------------- العرض ---------------- */
-    const matches = (r) => {
-      if (filter === "late" && !r.late) return false;
-      if (filter === "nopush" && r.push) return false;
-      if (["idle", "declared", "arrived", "picked_up"].includes(filter) && r.state !== filter) return false;
-      if (query) {
-        const q = query.toLowerCase();
-        if (!String(r.name || "").toLowerCase().includes(q) && !String(r.id).toLowerCase().includes(q)) return false;
-      }
-      return true;
-    };
-    function counts() {
-      const c = { all: data.riders.length, idle: 0, declared: 0, arrived: 0, picked_up: 0, late: 0, nopush: 0 };
-      for (const r of data.riders) {
-        c[r.state] = (c[r.state] || 0) + 1;
-        if (r.late) c.late++;
-        if (!r.push) c.nopush++;
-      }
-      return c;
-    }
+  function handleErr(err) {
+    if (err && (err.code === "key" || err.code === "missing")) { ls.del("adminKey"); showGate(err.message); return; }
+    toast((err && err.message) || T("e_loading"));
+  }
 
-    function renderPipeline() {
-      const c = counts();
-      const nav = $("pipeline");
-      nav.replaceChildren();
-      for (const t of TILES) {
-        const b = document.createElement("button");
-        b.type = "button";
-        b.style.setProperty("--c", t.css);
-        b.setAttribute("aria-pressed", String(filter === t.key));
-        b.innerHTML = '<span class="n num">' + (c[t.key] || 0) + '</span><span class="l">' + esc(t.label) + "</span>";
-        b.addEventListener("click", () => { filter = t.key; render(); });
-        nav.append(b);
-      }
-      const s = document.createElement("div");
-      s.className = "static";
-      s.innerHTML = '<span class="n num">' + ((data.stats && data.stats.delivered_today) || 0) + '</span><span class="l">سلّموا النهاردة</span>';
-      nav.append(s);
-    }
+  /* ===================== Live ===================== */
+  const FILTERS = ["all", "idle", "declared", "arrived", "picked_up", "late", "push"];
+  // map markers: what the rider is doing right now
+  const PIN = {
+    idle: { color: "#8794a8", icon: "💤" },
+    declared: { color: "#f0a30a", icon: "🛵" },
+    arrived: { color: "#7c3aed", icon: "🍽️" },
+    picked_up: { color: "#1d6fe0", icon: "🏠" },
+  };
 
-    function renderList() {
-      const rows = data.riders.filter(matches).sort((a, b) =>
-        (b.late - a.late) || (PRIORITY[a.state] - PRIORITY[b.state]) || String(a.id).localeCompare(String(b.id), "en", { numeric: true }));
-      const ul = $("list");
-      ul.replaceChildren();
-      if (!rows.length) {
-        const li = document.createElement("li");
-        li.className = "empty";
-        li.textContent = data.riders.length
-          ? "مفيش مناديب بالتصفية دي."
-          : "لسه مفيش مناديب. اضغط «إضافة مناديب» فوق.";
-        ul.append(li);
-        return;
-      }
-      for (const r of rows) {
-        const st = STATES[r.state] || STATES.idle;
-        const li = document.createElement("li");
-        const b = document.createElement("button");
-        b.type = "button";
-        b.className = "rider";
-        b.style.setProperty("--c", st.css);
-        const since = stateSince(r);
-        const parts = [];
-        if (r.late) parts.push('<span class="flag">متأخر في الرد</span>');
-        else if (r.prompt) parts.push("مستني ردّه");
-        if (since) parts.push("الحالة " + ago(since));
-        parts.push(r.loc ? "الموقع " + ago(r.loc.at) : "بدون موقع");
-        if (!r.push) parts.push('<span class="flag">بدون إشعارات</span>');
-        if (r.missed_today) parts.push("لم يرد " + r.missed_today + " مرة النهاردة");
-        b.innerHTML =
-          '<div class="t"><span class="name">' + esc(r.name || r.id) + '</span><span class="id num">' + esc(r.id) +
-          '</span><span class="state">' + esc(st.label) + '</span></div><div class="meta">' +
-          parts.map((p) => "<span>" + p + "</span>").join("") + "</div>";
-        b.addEventListener("click", () => focusRider(r.id));
-        li.append(b);
-        ul.append(li);
-      }
-    }
+  function matchFilter(r, f) {
+    if (f === "all") return true;
+    if (f === "late") return r.late;
+    if (f === "push") return !r.push;
+    return r.state === f;
+  }
+  function stageSince(r) {
+    if (!r.order) return r.idle_since;
+    return r.state === "picked_up" ? r.order.picked_at : r.state === "arrived" ? r.order.arrived_at : r.order.declared_at;
+  }
+  const idleSeverity = (ms) => (ms >= 3600000 ? "hi" : ms >= 1800000 ? "mid" : "ok");
 
-    function renderEvents() {
-      const ul = $("events");
-      ul.replaceChildren();
-      if (!data.events.length) {
-        const li = document.createElement("li");
-        li.textContent = "مفيش أحداث لسه.";
-        ul.append(li);
-        return;
-      }
-      for (const e of data.events) {
-        const li = document.createElement("li");
-        li.innerHTML = "<span>" + esc(e.name || e.rider_id) + " " + esc(EVENT_LABELS[e.type] || e.type) +
-          '</span><span class="when">' + esc(ago(e.at)) + "</span>";
-        ul.append(li);
-      }
-    }
+  function renderFilters() {
+    $("filters").innerHTML = FILTERS.map((f) => {
+      const n = overview.riders.filter((r) => matchFilter(r, f)).length;
+      return `<button class="chip" data-f="${f}" aria-pressed="${f === filter}">${esc(T("f_" + f))} · ${n}</button>`;
+    }).join("");
+    $("filters").querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => { filter = b.dataset.f; renderLive(); }));
+  }
+  function kpi(label, value, sub, cls = "") {
+    return `<div class="card kpi ${cls}"><h3>${esc(label)}</h3><div class="v num">${value}</div><div class="s">${esc(sub || "")}</div></div>`;
+  }
 
-    /* ---------------- الخريطة ---------------- */
-    function initMap() {
-      if (map) { map.invalidateSize(); return; }
-      if (typeof L === "undefined") {
-        const n = $("mapNote");
-        n.classList.remove("hidden");
-        n.textContent = "الخريطة ما اتحمّلتش. تأكد من الاتصال بالإنترنت وحدّث الصفحة. باقي اللوحة شغّالة.";
-        return;
-      }
-      map = L.map("map", { zoomControl: true }).setView([30.0444, 31.2357], 11);
-      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-        attribution: "© مساهمو OpenStreetMap",
-      }).addTo(map);
-      $("fitBtn").addEventListener("click", () => fit(true));
-      window.addEventListener("resize", () => map.invalidateSize());
-    }
+  function renderLive() {
+    if (!overview) return;
+    const o = overview, s = o.stats;
+    $("updated").textContent = T("updatedAt", { t: hhmm(o.now) });
+    renderFilters();
+    $("liveKpis").innerHTML =
+      kpi(T("k_total"), s.total, T("s_total")) +
+      kpi(T("k_order"), s.with_order, T("s_order", { p: s.total ? Math.round((s.with_order / s.total) * 100) : 0 })) +
+      kpi(T("k_idle"), s.idle, T("s_idle"), s.idle && s.total && s.idle / s.total > 0.5 ? "warn" : "") +
+      kpi(T("k_deliv"), s.delivered_today, T("s_deliv"), "good") +
+      kpi(T("k_late"), s.late, T("s_late"), s.late ? "warn" : "") +
+      kpi(T("k_push"), s.push_off, T("s_push"), s.push_off ? "warn" : "");
+    renderIdle(o); renderRiders(o); renderMap(o); renderFeed(o);
+  }
 
-    function pinIcon(r) {
-      const st = STATES[r.state] || STATES.idle;
-      const stale = !r.loc || nowMs() - r.loc.at > STALE_LOC_MS;
-      const label = String(r.id).slice(-4);
-      return L.divIcon({
-        className: "pin-wrap",
-        iconSize: [0, 0],
-        html: '<div class="pin num' + (r.late ? " late" : "") + (stale ? " stale" : "") +
-          '" style="--fill:' + st.fill + ";--ink-on:" + st.on + '">' + esc(label) + "</div>",
+  function renderIdle(o) {
+    const now = o.now;
+    const idle = o.riders.filter((r) => r.state === "idle")
+      .map((r) => ({ ...r, ms: r.idle_since ? Math.max(0, now - r.idle_since) : null }))
+      .sort((a, b) => (b.ms ?? -1) - (a.ms ?? -1));
+    $("idleCount").textContent = idle.length + " " + T("riders");
+    const known = idle.filter((r) => r.ms != null);
+    const over60 = known.filter((r) => r.ms >= 3600000).length, over30 = known.filter((r) => r.ms >= 1800000).length;
+    $("idleSum").innerHTML = known.length
+      ? `<span>${T("sumLongest")}: <b class="num sev-${idleSeverity(o.stats.longest_idle_ms)}">${dur(o.stats.longest_idle_ms)}</b></span>
+         <span>${T("sumAvg")}: <b class="num">${dur(o.stats.avg_idle_ms)}</b></span>
+         <span>${T("sumOver30")}: <b class="num">${over30}</b></span>
+         <span>${T("sumOver60")}: <b class="num ${over60 ? "sev-hi" : ""}">${over60}</b></span>`
+      : "";
+    $("idleSum").classList.toggle("hidden", !known.length);
+    const maxMs = Math.max(3600000, ...known.map((r) => r.ms));
+    $("idleList").innerHTML = idle.length
+      ? idle.map((r) => {
+          const sev = r.ms == null ? "ok" : idleSeverity(r.ms);
+          const color = sev === "hi" ? "var(--red)" : sev === "mid" ? "var(--amber)" : "var(--green)";
+          const w = r.ms == null ? 0 : Math.max(4, Math.min(100, (r.ms / maxMs) * 100));
+          return `<div class="idle-row">
+            <div><span class="rname">${esc(r.name || r.id)}</span> <span class="rid">#${esc(r.id)}</span>${r.push ? "" : ` <span class="badge b-late">🔕</span>`}${r.late ? ` <span class="badge b-late">${esc(T("f_late"))}</span>` : ""}</div>
+            <div class="dur num sev-${sev}">${r.ms == null ? esc(T("idleUnknown")) : dur(r.ms)}</div>
+            <div class="bar"><i style="width:${w}%;background:${color}"></i></div></div>`;
+        }).join("")
+      : `<div class="empty">${esc(T("noIdle"))}</div>`;
+  }
+
+  function renderRiders(o) {
+    const now = o.now;
+    $("ridersHead").innerHTML = ["c_rider", "c_status", "c_time", "c_seen", "c_asked", "c_notif", "c_deliv"].map((k) => `<th>${esc(T(k))}</th>`).join("");
+    const rows = o.riders.filter((r) => matchFilter(r, filter));
+    $("listCount").textContent = rows.length + " / " + o.riders.length;
+    const order = { picked_up: 0, arrived: 1, declared: 2, idle: 3 };
+    rows.sort((a, b) => (b.late - a.late) || (order[a.state] - order[b.state]) || String(a.id).localeCompare(String(b.id), undefined, { numeric: true }));
+    $("ridersBody").innerHTML = rows.length
+      ? rows.map((r) => {
+          const since = stageSince(r);
+          return `<tr>
+            <td><div class="rname">${esc(r.name || r.id)}</div><div class="rid">#${esc(r.id)}</div></td>
+            <td><span class="badge b-${r.state}">${PIN[r.state].icon} ${esc(T("st_" + r.state))}</span></td>
+            <td class="num">${since ? dur(now - since) : "–"}</td>
+            <td class="num">${r.loc ? ago(r.loc.at, now) : T("never")}</td>
+            <td>${r.prompt ? `<span class="badge ${r.late ? "b-late" : "b-declared"}">${esc(T("q_" + r.prompt.type))}</span>` : "–"}</td>
+            <td>${r.push ? "🔔" : `<span class="badge b-late">${esc(T("off"))}</span>`}</td>
+            <td class="num">${r.delivered_today}</td></tr>`;
+        }).join("")
+      : `<tr><td colspan="7" class="empty">${esc(T("noRiders"))}</td></tr>`;
+  }
+
+  let map = null, layer = null, fitted = false;
+  function initMap() {
+    if (map || typeof L === "undefined") return;
+    map = L.map("map", { zoomControl: true }).setView([30.04, 31.23], 11);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; OpenStreetMap" }).addTo(map);
+    layer = L.layerGroup().addTo(map);
+  }
+  function renderLegend() {
+    $("legend").innerHTML = ["idle", "declared", "arrived", "picked_up"]
+      .map((s) => `<span><i style="background:${PIN[s].color}">${PIN[s].icon}</i>${esc(T("lg_" + s))}</span>`).join("");
+  }
+  function renderMap(o) {
+    renderLegend();
+    initMap();
+    if (!map) return;
+    layer.clearLayers();
+    const pts = [];
+    o.riders.filter((r) => r.loc && matchFilter(r, filter)).forEach((r) => {
+      const p = PIN[r.state];
+      const icon = L.divIcon({
+        className: "", iconSize: [36, 36], iconAnchor: [18, 18],
+        html: `<div style="position:relative"><div class="pin ${r.late ? "late" : ""}" style="background:${p.color}">${p.icon}</div><div class="pin-label">${esc(r.name || r.id)}</div></div>`,
       });
-    }
-    function popupHtml(r) {
-      const st = STATES[r.state] || STATES.idle;
-      const since = stateSince(r);
-      return '<div class="popup"><b>' + esc(r.name || r.id) + "</b><div>رقم " + esc(r.id) + "</div><div>" + esc(st.label) +
-        (since ? "، " + esc(ago(since)) : "") + "</div>" + (r.late ? '<div class="flag">متأخر في الرد</div>' : "") +
-        "<div>آخر موقع: " + esc(ago(r.loc.at)) + (r.loc.accuracy ? "، دقة " + Math.round(r.loc.accuracy) + " م" : "") + "</div></div>";
-    }
-
-    function renderMap() {
-      if (!map) return;
-      const visible = new Set();
-      for (const r of data.riders) {
-        if (!r.loc || !matches(r)) continue;
-        visible.add(r.id);
-        const ll = [r.loc.lat, r.loc.lng];
-        let m = markers.get(r.id);
-        if (!m) {
-          m = L.marker(ll, { icon: pinIcon(r), title: r.name || r.id, keyboard: true }).addTo(map);
-          m.bindPopup(popupHtml(r));
-          markers.set(r.id, m);
-        } else {
-          m.setLatLng(ll);
-          m.setIcon(pinIcon(r));
-          m.setPopupContent(popupHtml(r));
-        }
-      }
-      for (const [id, m] of markers) {
-        if (!visible.has(id)) { map.removeLayer(m); markers.delete(id); }
-      }
-      $("fitBtn").classList.toggle("hidden", markers.size === 0);
-      const note = $("mapNote");
-      const anyLoc = data.riders.some((r) => r.loc);
-      note.classList.toggle("hidden", anyLoc || !data.riders.length);
-      if (!anyLoc && data.riders.length) note.textContent = "لسه ما وصلش موقع أي مندوب. المواقع بتظهر لما يضغطوا أزرار الأوردر أو يشغّلوا مشاركة الموقع.";
-      if (!fitted && markers.size) { fit(false); fitted = true; }
-    }
-    function fit(force) {
-      if (!map || !markers.size) return;
-      const pts = [...markers.values()].map((m) => m.getLatLng());
-      map.fitBounds(L.latLngBounds(pts), { padding: [48, 48], maxZoom: force ? 16 : 14 });
-    }
-    function focusRider(id) {
-      const r = data.riders.find((x) => x.id === id);
-      const m = markers.get(id);
-      if (!map || !r || !m) return;
-      map.setView([r.loc.lat, r.loc.lng], Math.max(map.getZoom(), 15));
-      m.openPopup();
-      if (window.matchMedia("(max-width: 900px)").matches) window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-
-    function render() {
-      renderPipeline();
-      renderList();
-      renderEvents();
-      renderMap();
-    }
-
-    $("search").addEventListener("input", (e) => { query = e.target.value.trim(); renderList(); renderMap(); });
-
-    /* ---------------- إضافة مناديب ---------------- */
-    $("addBtn").addEventListener("click", () => { $("addResult").textContent = ""; $("addDlg").showModal(); $("addText").focus(); });
-    $("addCancel").addEventListener("click", () => $("addDlg").close());
-    $("addGo").addEventListener("click", async () => {
-      const riders = [];
-      for (const line of $("addText").value.split(/\r?\n/)) {
-        const m = line.trim().match(/^([A-Za-z0-9_-]+)\s*(?:[,،\t]\s*|\s+)?(.*)$/);
-        if (m) riders.push({ id: m[1], name: m[2].trim() });
-        else if (line.trim()) riders.push({ id: line.trim(), name: "" });
-      }
-      const out = $("addResult");
-      if (!riders.length) { out.textContent = "اكتب مندوب واحد على الأقل."; return; }
-      out.textContent = "جاري الإضافة...";
-      try {
-        const { status, body } = await api("/api/admin/riders", { method: "POST", body: JSON.stringify({ riders }) });
-        if (status === 401) return showGate("المفتاح غير صحيح");
-        if (!body.ok) { out.textContent = body.error || "حصل خطأ."; return; }
-        out.textContent = "اتضاف " + body.added + " مندوب" + (body.existing ? "، و" + body.existing + " كانوا موجودين" : "") +
-          (body.invalid ? "، و" + body.invalid + " رقم غير صالح (حروف إنجليزي وأرقام بس)" : "") + ".";
-        if (body.added) { $("addText").value = ""; load(); }
-      } catch {
-        out.textContent = "تعذر الاتصال. جرّب تاني.";
-      }
+      L.marker([r.loc.lat, r.loc.lng], { icon, title: r.name || r.id })
+        .bindPopup(`<b>${esc(r.name || r.id)}</b> #${esc(r.id)}<br>${p.icon} ${esc(T("st_" + r.state))}<br>${esc(ago(r.loc.at, o.now))}`)
+        .addTo(layer);
+      pts.push([r.loc.lat, r.loc.lng]);
     });
+    $("mapCount").textContent = pts.length ? T("pins", { n: pts.length }) : T("noPins");
+    if (pts.length && !fitted) { map.fitBounds(pts, { padding: [30, 30], maxZoom: 15 }); fitted = true; }
+  }
 
-    start();
+  function renderFeed(o) {
+    $("feed").innerHTML = o.events.length
+      ? o.events.map((e) => `<li><time>${hhmm(e.at)}</time><span><b>${esc(e.name || e.rider_id)}</b> ${esc(T("ev_" + e.type))}</span></li>`).join("")
+      : `<li class="muted">${esc(T("noEvents"))}</li>`;
+  }
+
+  async function loadLive() {
+    try { overview = await api("/api/admin/overview"); renderLive(); } catch (e) { handleErr(e); }
+  }
+
+  /* ===================== Reports ===================== */
+  const RANGES = ["today", "yesterday", "7d", "30d"];
+  function renderRanges() {
+    $("ranges").innerHTML = RANGES.map((r) => `<button class="chip" data-r="${r}" aria-pressed="${r === range}">${esc(T("r_" + r))}</button>`).join("");
+    $("ranges").querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => { range = b.dataset.r; renderRanges(); loadReport(); }));
+  }
+  async function loadReport() {
+    renderRanges();
+    try { report = await api("/api/admin/report?range=" + range); renderReport(); } catch (e) { handleErr(e); }
+  }
+  const fmtDate = (ms) => new Date(ms).toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+
+  function renderReport() {
+    if (!report) return;
+    const r = report, t = r.totals;
+    $("rangeLabel").textContent = fmtDate(r.from) + (r.range === "today" || r.range === "yesterday" ? "" : " – " + fmtDate(Math.min(r.to, r.now)));
+    const compl = t.declared ? Math.round((t.delivered / t.declared) * 100) : 0;
+    $("repKpis").innerHTML =
+      kpi(T("rk_orders"), t.declared, T("rs_declared")) +
+      kpi(T("rk_deliv"), t.delivered, T("rs_rate", { p: compl }), "good") +
+      kpi(T("rk_cancel"), t.cancelled + t.expired, "") +
+      kpi(T("rk_total"), dur(t.avg_total_ms), T("rs_total")) +
+      kpi(T("rk_pick"), dur(t.avg_pickup_ms), T("rs_pick")) +
+      kpi(T("rk_wait"), dur(t.avg_wait_ms), T("rs_wait")) +
+      kpi(T("rk_trip"), dur(t.avg_delivery_ms), T("rs_trip")) +
+      kpi(T("rk_resp"), pct(t.response_rate), T("rs_resp")) +
+      kpi(T("rk_respt"), dur(t.avg_response_ms), "") +
+      kpi(T("rk_util"), pct(t.utilization), T("rs_util")) +
+      kpi(T("rk_missed"), t.prompts_missed, T("rs_missed"), t.prompts_missed ? "warn" : "");
+
+    const hrs = r.by_hour, mx = Math.max(1, ...hrs);
+    $("hourChart").innerHTML = hrs.map((n, h) =>
+      `<div class="col" title="${h}:00 · ${n}"><em>${n || ""}</em><i style="height:${(n / mx) * 100}%"></i><span>${h}</span></div>`).join("");
+
+    $("dayCard").classList.toggle("hidden", r.by_day.length < 2);
+    const dm = Math.max(1, ...r.by_day.map((d) => d.total));
+    $("dayChart").innerHTML = r.by_day.map((d) =>
+      `<div class="col" title="${d.date}"><em>${d.total}</em><i style="height:${(d.total / dm) * 100}%"></i><span>${esc(d.date.slice(5))}</span></div>`).join("");
+
+    const reached = r.orders.filter((o) => o.arrived_at || o.picked_at || o.delivered_at).length;
+    const picked = r.orders.filter((o) => o.picked_at || o.delivered_at).length;
+    const steps = [["fn_declared", t.declared, "var(--amber)"], ["fn_arrived", reached, "var(--violet)"], ["fn_picked", picked, "var(--blue)"], ["fn_deliv", t.delivered, "var(--green)"]];
+    const base = Math.max(1, t.declared);
+    $("funnel").innerHTML = steps.map(([k, n, c]) =>
+      `<div class="f"><span>${esc(T(k))}</span><div class="bar"><i style="width:${(n / base) * 100}%;background:${c}"></i></div><b class="num">${n}</b></div>`).join("");
+
+    $("perfHead").innerHTML = ["l_rider", "p_orders", "p_deliv", "p_cancel", "p_total", "p_busy", "p_util", "p_resp", "p_missed"].map((k) => `<th>${esc(T(k))}</th>`).join("");
+    const rows = r.riders.filter((x) => x.declared || x.sent).sort((a, b) => b.delivered - a.delivered || b.declared - a.declared);
+    $("perfBody").innerHTML = rows.length
+      ? rows.map((x) => `<tr>
+          <td><div class="rname">${esc(x.name || x.id)}</div><div class="rid">#${esc(x.id)}</div></td>
+          <td class="num">${x.declared}</td><td class="num">${x.delivered}</td><td class="num">${x.cancelled + x.expired}</td>
+          <td class="num">${dur(x.avg_total_ms)}</td><td class="num">${dur(x.busy_ms)}</td>
+          <td><div class="bar" style="width:90px"><i style="width:${Math.round(x.utilization * 100)}%;background:var(--brand)"></i></div><span class="rid num">${pct(x.utilization)}</span></td>
+          <td class="num">${pct(x.response_rate)}</td><td class="num ${x.missed ? "sev-hi" : ""}">${x.missed}</td></tr>`).join("")
+      : `<tr><td colspan="9" class="empty">${esc(T("noData"))}</td></tr>`;
+
+    $("orderLogNote").textContent = T("logNote", { n: r.orders.length });
+    $("logHead").innerHTML = ["l_id", "l_rider", "l_status", "l_start", "l_pick", "l_end", "l_dur"].map((k) => `<th>${esc(T(k))}</th>`).join("");
+    $("logBody").innerHTML = r.orders.length
+      ? r.orders.map((o) => {
+          const cls = o.status === "delivered" ? "b-green" : o.status === "active" ? "b-declared" : "b-late";
+          return `<tr><td class="num">${o.id}</td><td><span class="rname">${esc(o.name || o.rider_id)}</span> <span class="rid">#${esc(o.rider_id)}</span></td>
+            <td><span class="badge ${cls}">${esc(T("os_" + o.status))}</span></td>
+            <td class="num">${hhmm(o.declared_at)}</td><td class="num">${hhmm(o.picked_at)}</td><td class="num">${hhmm(o.delivered_at)}</td>
+            <td class="num">${o.delivered_at ? dur(o.delivered_at - o.declared_at) : "–"}</td></tr>`;
+        }).join("")
+      : `<tr><td colspan="7" class="empty">${esc(T("noData"))}</td></tr>`;
+  }
+
+  function csv(rows) {
+    return "﻿" + rows.map((r) => r.map((c) => {
+      let s = String(c ?? "");
+      if (/^[=+\-@]/.test(s)) s = "'" + s;
+      return '"' + s.replace(/"/g, '""') + '"';
+    }).join(",")).join("\r\n");
+  }
+  function download(name, text) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([text], { type: "text/csv;charset=utf-8" }));
+    a.download = name; document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+  const iso = (ms) => (ms ? new Date(ms).toISOString().replace("T", " ").slice(0, 19) : "");
+  const mins = (v) => (v == null ? "" : Math.round(v / 600) / 100);
+  $("exportRiders").addEventListener("click", () => {
+    if (!report) return;
+    const head = ["id", "name", "orders", "delivered", "cancelled", "expired", "avg_total_min", "busy_min", "utilization_pct", "questions", "answered", "late", "missed", "response_rate_pct"];
+    download(`riders-${range}.csv`, csv([head, ...report.riders.map((x) => [x.id, x.name, x.declared, x.delivered, x.cancelled, x.expired, mins(x.avg_total_ms), mins(x.busy_ms), Math.round(x.utilization * 100), x.sent, x.answered, x.late, x.missed, x.response_rate == null ? "" : Math.round(x.response_rate * 100)])]));
+  });
+  $("exportOrders").addEventListener("click", () => {
+    if (!report) return;
+    download(`orders-${range}.csv`, csv([["order_id", "rider_id", "rider_name", "status", "declared_at", "arrived_at", "picked_up_at", "delivered_at", "total_min"],
+      ...report.orders.map((o) => [o.id, o.rider_id, o.name, o.status, iso(o.declared_at), iso(o.arrived_at), iso(o.picked_at), iso(o.delivered_at), o.delivered_at ? mins(o.delivered_at - o.declared_at) : ""])]));
+  });
+
+  /* ===================== Riders management ===================== */
+  async function loadRiders() {
+    try { manage = await api("/api/admin/riders"); renderRidersMgmt(); } catch (e) { handleErr(e); }
+  }
+  function renderRidersMgmt() {
+    if (!manage) return;
+    const q = $("riderSearch").value.trim().toLowerCase();
+    const all = manage.riders;
+    $("ridersSub").textContent = T("activeN", { a: all.filter((r) => r.active).length, t: all.length });
+    $("mgHead").innerHTML = ["m_id", "m_name", "m_status", "m_push", "m_action"].map((k) => `<th>${esc(T(k))}</th>`).join("");
+    const rows = all.filter((r) => !q || String(r.id).toLowerCase().includes(q) || String(r.name || "").toLowerCase().includes(q));
+    $("mgBody").innerHTML = rows.length
+      ? rows.map((r) => `<tr><td class="num">${esc(r.id)}</td><td class="rname">${esc(r.name || "")}</td>
+          <td><span class="badge ${r.active ? "b-green" : "b-idle"}">${esc(T(r.active ? "active" : "inactive"))}</span></td>
+          <td>${r.push ? "🔔 " + esc(T("on")) : `<span class="badge b-late">${esc(T("off"))}</span>`}</td>
+          <td><button class="btn ghost sm" data-id="${esc(r.id)}" data-a="${r.active ? 0 : 1}">${esc(T(r.active ? "deactivate" : "activate"))}</button></td></tr>`).join("")
+      : `<tr><td colspan="5" class="empty">${esc(T("noRiders"))}</td></tr>`;
+    $("mgBody").querySelectorAll("button").forEach((b) => b.addEventListener("click", async () => {
+      try {
+        await api("/api/admin/riders/status", { method: "POST", body: JSON.stringify({ id: b.dataset.id, active: b.dataset.a === "1" }) });
+        loadRiders();
+      } catch (e) { handleErr(e); }
+    }));
+  }
+  $("riderSearch").addEventListener("input", renderRidersMgmt);
+
+  $("addBtn").addEventListener("click", () => { $("addErr").textContent = ""; $("addDlg").showModal(); $("addText").focus(); });
+  $("addCancel").addEventListener("click", () => $("addDlg").close());
+  $("addForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const riders = $("addText").value.split(/\r?\n/).map((l) => l.replace(/[‎‏‪-‮﻿]/g, "").trim()).filter(Boolean).map((l) => {
+      const m = l.match(/^([^,;\t ]+)[,;\t ]*(.*)$/);
+      return { id: m[1], name: m[2].trim() };
+    });
+    if (!riders.length) { $("addErr").textContent = T("nothing"); return; }
+    $("addSave").disabled = true;
+    try {
+      const r = await api("/api/admin/riders", { method: "POST", body: JSON.stringify({ riders }) });
+      $("addDlg").close();
+      $("addText").value = "";
+      toast(T("added", { a: r.added, e: r.existing, i: r.invalid ? T("invalidN", { n: r.invalid }) : "" }));
+      loadRiders();
+    } catch (err) {
+      if (err.code === "key" || err.code === "missing") { $("addDlg").close(); handleErr(err); }
+      else $("addErr").textContent = err.message;
+    } finally { $("addSave").disabled = false; }
+  });
+
+  let timer = null;
+  function startPolling() {
+    stopPolling();
+    timer = setInterval(() => { if (!document.hidden && page === "live") loadLive(); }, 15000);
+  }
+  function stopPolling() { clearInterval(timer); timer = null; }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && !$("app").classList.contains("hidden") && page === "live") loadLive(); });
+
+  function renderAll() {
+    renderRanges();
+    if (overview) renderLive();
+    if (report) renderReport();
+    if (manage) renderRidersMgmt();
+  }
+
+  applyStatic();
+  if (key) showApp(); else showGate();
   </script>
 </body>
 </html>
