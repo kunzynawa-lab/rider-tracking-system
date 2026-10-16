@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>متابعة المناديب</title>
-  <meta name="theme-color" content="#101827">
+  <title>Rider Tracking</title>
+  <meta name="theme-color" content="#0f766e">
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/icon-192.png">
@@ -12,281 +12,532 @@
   <meta name="mobile-web-app-capable" content="yes">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;600;700&family=Noto+Sans+Bengali:wght@400;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #101827;
-      --surface: #1b2638;
-      --surface-2: #243247;
-      --line: #33435c;
-      --text: #f2f5f9;
-      --muted: #a9b6c9;
-      --declared: #e0a100;
-      --arrived: #9b7bff;
-      --picked: #3fa7f5;
-      --done: #2fbf7a;
-      --late: #ff6b66;
-      --focus: #8ecbff;
+      --bg: #f3f5f7;
+      --surface: #ffffff;
+      --text: #0f1b2d;
+      --muted: #5b6b7f;
+      --line: #e2e8ef;
+      --brand: #0f766e;
+      --brand-d: #0b5d57;
+      --brand-soft: #e3f4f2;
+      --amber: #b45309; --amber-soft: #fef3c7;
+      --violet: #6d28d9; --violet-soft: #ede9fe;
+      --blue: #1d4ed8; --blue-soft: #dbeafe;
+      --green: #15803d; --green-soft: #dcfce7;
+      --red: #b42318; --red-soft: #fee4e2;
+      --shadow: 0 1px 2px rgba(15,27,45,.06), 0 8px 24px rgba(15,27,45,.06);
     }
-    * { box-sizing: border-box; }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b1220; --surface: #141d2e; --text: #eef2f7; --muted: #9aa9bd; --line: #243249;
+        --brand: #2dd4bf; --brand-d: #14b8a6; --brand-soft: #0f2e2e;
+        --amber: #fbbf24; --amber-soft: #3a2a08;
+        --violet: #a78bfa; --violet-soft: #271f47;
+        --blue: #60a5fa; --blue-soft: #14284d;
+        --green: #4ade80; --green-soft: #0f2f1c;
+        --red: #f87171; --red-soft: #3a1514;
+        --shadow: 0 1px 2px rgba(0,0,0,.4);
+      }
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html { -webkit-text-size-adjust: 100%; }
     body {
-      margin: 0;
-      min-height: 100vh;
-      min-height: 100dvh;
-      background: var(--bg);
-      color: var(--text);
-      font-family: "IBM Plex Sans Arabic", Tahoma, Arial, sans-serif;
-      line-height: 1.6;
-      padding: env(safe-area-inset-top) 16px calc(24px + env(safe-area-inset-bottom));
+      margin: 0; min-height: 100vh; min-height: 100dvh;
+      background: var(--bg); color: var(--text);
+      font-family: "Noto Sans Arabic", "Noto Sans Bengali", Inter, system-ui, "Segoe UI", Tahoma, sans-serif;
+      line-height: 1.55; font-size: 16px;
     }
-    main { max-width: 460px; margin: 0 auto; padding-top: 20px; }
-    h1 { font-size: 22px; margin: 0 0 4px; }
-    p { margin: 0; }
-    .muted { color: var(--muted); }
     .hidden { display: none !important; }
-    :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+    p { margin: 0; }
+    :focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
 
-    /* تسجيل الدخول */
-    .card { background: var(--surface); border-radius: 16px; padding: 20px; }
-    label { display: block; margin-bottom: 8px; color: var(--muted); font-size: 15px; }
-    input {
-      width: 100%; padding: 16px; border-radius: 12px; font: inherit; font-size: 18px;
-      background: var(--bg); color: var(--text); border: 1px solid var(--line);
+    .appbar {
+      position: sticky; top: 0; z-index: 5;
+      background: var(--brand); color: #fff;
+      padding: calc(env(safe-area-inset-top) + 10px) 16px 12px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
     }
-    button {
-      width: 100%; padding: 16px; border: 0; border-radius: 12px; font: inherit;
-      font-size: 17px; font-weight: 700; color: #fff; background: #16a34a; cursor: pointer;
-      min-height: 56px;
+    @media (prefers-color-scheme: dark) { .appbar { background: #0f2e2e; } }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; }
+    .brand img { width: 32px; height: 32px; border-radius: 9px; background: #fff; }
+    .langs { display: flex; gap: 4px; background: rgba(255,255,255,.16); padding: 3px; border-radius: 999px; }
+    .langs button {
+      border: 0; background: transparent; color: #fff; font: inherit; font-size: 13px; font-weight: 600;
+      padding: 5px 11px; border-radius: 999px; cursor: pointer; min-height: 30px;
     }
-    button:disabled { opacity: .5; cursor: default; }
-    button + button, input + button { margin-top: 12px; }
-    .btn-quiet { background: var(--surface-2); color: var(--text); font-weight: 600; font-size: 16px; min-height: 48px; }
-    .btn-danger { background: transparent; color: var(--late); border: 1px solid var(--late); font-size: 15px; min-height: 48px; font-weight: 600; }
-    .btn-declared { background: var(--declared); color: #1d1500; }
-    .btn-arrived { background: var(--arrived); color: #130a3b; }
-    .btn-picked { background: var(--picked); color: #04213a; }
-    .btn-done { background: var(--done); color: #03261a; }
+    .langs button[aria-pressed="true"] { background: #fff; color: #0b5d57; }
+    @media (prefers-color-scheme: dark) { .langs button[aria-pressed="true"] { background: #2dd4bf; color: #04201d; } }
 
-    /* الرأس */
-    .top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
-    .top .who { font-size: 15px; color: var(--muted); }
+    main { max-width: 480px; margin: 0 auto; padding: 16px 16px calc(120px + env(safe-area-inset-bottom)); }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); padding: 18px; }
+    h1 { font-size: 24px; margin: 0 0 6px; line-height: 1.3; }
+    h2 { font-size: 20px; margin: 0; line-height: 1.35; }
+    .muted { color: var(--muted); }
 
-    /* مراحل الأوردر */
-    .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 0 0 16px; padding: 0; list-style: none; }
-    .steps li { text-align: center; font-size: 13px; color: var(--muted); }
-    .steps li::before {
-      content: ""; display: block; height: 6px; border-radius: 3px; background: var(--surface-2); margin-bottom: 6px;
+    /* login */
+    .hero { text-align: center; padding: 28px 8px 20px; }
+    .hero img { width: 72px; height: 72px; border-radius: 20px; box-shadow: var(--shadow); }
+    label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 15px; }
+    input[type=text] {
+      width: 100%; padding: 15px 16px; font: inherit; font-size: 20px; letter-spacing: .5px;
+      border: 1.5px solid var(--line); border-radius: 14px; background: var(--bg); color: var(--text);
+      text-align: center; direction: ltr;
     }
-    .steps li.on { color: var(--text); font-weight: 700; }
-    .steps li.on::before { background: var(--c, var(--done)); }
-    .steps li small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+    input[type=text]:focus { border-color: var(--brand); outline: none; box-shadow: 0 0 0 4px var(--brand-soft); }
+    button.btn {
+      width: 100%; min-height: 56px; padding: 14px 18px; border: 0; border-radius: 14px; cursor: pointer;
+      font: inherit; font-size: 17px; font-weight: 700; color: #fff; background: var(--brand-d);
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    @media (prefers-color-scheme: dark) { button.btn { color: #04201d; background: var(--brand); } }
+    button.btn:active { transform: scale(.985); }
+    button.btn:disabled { opacity: .55; cursor: default; }
+    .btn.amber { background: #d97706; color: #fff; }
+    .btn.violet { background: #6d28d9; color: #fff; }
+    .btn.blue { background: #1d4ed8; color: #fff; }
+    .btn.green { background: #15803d; color: #fff; }
+    .btn.quiet { background: var(--bg); color: var(--text); border: 1px solid var(--line); min-height: 50px; font-size: 16px; font-weight: 600; }
+    .btn.danger { background: transparent; color: var(--red); border: 1px solid var(--line); min-height: 46px; font-size: 15px; font-weight: 600; }
+    .stack > * + * { margin-top: 12px; }
 
-    /* الحالة */
-    .status { padding: 18px; border-radius: 16px; background: var(--surface); margin-bottom: 12px; }
-    .status h2 { font-size: 20px; margin: 0 0 4px; }
+    /* hello */
+    .hello { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 2px 14px; }
+    .hello .id { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-weight: 700; font-size: 14px; direction: ltr; }
+
+    /* ask banner */
     .ask {
-      border: 2px solid var(--declared); background: rgba(224, 161, 0, .12);
-      border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; font-weight: 600;
+      display: flex; gap: 12px; align-items: flex-start; margin-bottom: 14px;
+      background: var(--amber-soft); border: 1.5px solid var(--amber); color: var(--text);
+      border-radius: 16px; padding: 14px 16px; font-weight: 700;
     }
-    .ask.late { border-color: var(--late); background: rgba(255, 107, 102, .12); }
-    .actions { display: grid; gap: 10px; }
+    .ask.late { background: var(--red-soft); border-color: var(--red); }
+    .ask .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--amber); margin-top: 7px; flex: none; animation: pulse 1.4s infinite; }
+    .ask.late .dot { background: var(--red); }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(217,119,6,.5);} 100% { box-shadow: 0 0 0 12px rgba(217,119,6,0);} }
+    @media (prefers-reduced-motion: reduce) { .ask .dot { animation: none; } }
 
-    /* الإعدادات */
-    details { margin-top: 20px; background: var(--surface); border-radius: 16px; padding: 4px 16px; }
-    summary { padding: 14px 0; font-weight: 600; cursor: pointer; }
-    details > div { padding-bottom: 16px; }
-    .row { margin-top: 14px; }
-    .row p { margin-bottom: 8px; font-size: 15px; }
-    #message { margin-top: 16px; min-height: 24px; color: var(--muted); font-size: 15px; }
+    /* status */
+    .badge { display: inline-block; font-size: 13px; font-weight: 700; padding: 3px 12px; border-radius: 999px; margin-bottom: 10px; }
+    .b-idle { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+    .b-declared { background: var(--amber-soft); color: var(--amber); }
+    .b-arrived { background: var(--violet-soft); color: var(--violet); }
+    .b-picked_up { background: var(--blue-soft); color: var(--blue); }
 
-    @media (prefers-reduced-motion: no-preference) {
-      .status { animation: rise .25s ease-out; }
-      @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    /* stepper */
+    .stepper { list-style: none; margin: 18px 0 0; padding: 0; }
+    .stepper li { position: relative; display: flex; align-items: center; gap: 12px; padding: 8px 0; color: var(--muted); }
+    .stepper li .n {
+      width: 28px; height: 28px; border-radius: 50%; flex: none; display: grid; place-items: center;
+      font-size: 13px; font-weight: 700; background: var(--bg); border: 2px solid var(--line); color: var(--muted);
+    }
+    .stepper li:not(:last-child)::after {
+      content: ""; position: absolute; width: 2px; height: 18px; background: var(--line);
+      inset-inline-start: 13px; top: 36px;
+    }
+    .stepper li.done { color: var(--text); }
+    .stepper li.done .n { background: var(--brand-d); border-color: var(--brand-d); color: #fff; }
+    @media (prefers-color-scheme: dark) { .stepper li.done .n { background: var(--brand); border-color: var(--brand); color: #04201d; } }
+    .stepper li.now { color: var(--text); font-weight: 700; }
+    .stepper li.now .n { border-color: var(--brand); color: var(--brand-d); background: var(--brand-soft); }
+    .stepper .t { margin-inline-start: auto; font-size: 13px; font-weight: 600; direction: ltr; color: var(--muted); }
+
+    .note { margin-top: 14px; font-size: 13.5px; color: var(--muted); display: flex; gap: 8px; }
+
+    /* sticky action bar */
+    .dock {
+      position: fixed; inset-inline: 0; bottom: 0; z-index: 6;
+      background: linear-gradient(to top, var(--bg) 70%, transparent);
+      padding: 18px 16px calc(14px + env(safe-area-inset-bottom));
+    }
+    .dock .in { max-width: 480px; margin: 0 auto; }
+    .dock .row { display: grid; gap: 10px; }
+    .dock .row.two { grid-template-columns: 1fr 1fr; }
+
+    /* settings */
+    details { margin-top: 16px; }
+    summary { list-style: none; cursor: pointer; padding: 14px 18px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "▾"; color: var(--muted); }
+    details[open] summary::after { content: "▴"; }
+    details .body { padding: 0 18px 18px; }
+    .setting { padding-top: 14px; }
+    .setting + .setting { border-top: 1px solid var(--line); margin-top: 14px; }
+    .setting p { margin-bottom: 10px; font-size: 15px; }
+
+    #message {
+      position: fixed; inset-inline: 16px; top: calc(env(safe-area-inset-top) + 64px); z-index: 8;
+      max-width: 448px; margin: 0 auto; background: #0f1b2d; color: #fff; padding: 12px 16px; border-radius: 12px;
+      font-size: 14.5px; box-shadow: var(--shadow); text-align: center;
     }
   </style>
 </head>
 <body>
+  <header class="appbar">
+    <div class="brand"><img src="/icon-192.png" alt=""><span id="appName"></span></div>
+    <div class="langs" role="group" aria-label="Language">
+      <button type="button" data-lang="ar" aria-pressed="false">عربي</button>
+      <button type="button" data-lang="ur" aria-pressed="false">اردو</button>
+      <button type="button" data-lang="bn" aria-pressed="false">বাংলা</button>
+    </div>
+  </header>
+
   <main>
     <section id="loginView" class="hidden">
-      <h1>متابعة المناديب</h1>
-      <p class="muted" style="margin-bottom:16px">سجّل رقمك مرة واحدة وهيفتكرك الجهاز.</p>
-      <div class="card">
-        <label for="riderId">رقم المندوب</label>
-        <input id="riderId" type="text" inputmode="numeric" autocomplete="off" placeholder="مثال: 1001">
-        <button id="loginBtn">دخول</button>
+      <div class="hero">
+        <img src="/icon-192.png" alt="">
+        <h1 id="loginTitle" style="margin-top:14px"></h1>
+        <p class="muted" id="loginSub"></p>
+      </div>
+      <div class="card stack">
+        <div>
+          <label for="riderId" id="idLabel"></label>
+          <input id="riderId" type="text" inputmode="numeric" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="1001">
+        </div>
+        <button id="loginBtn" class="btn"></button>
       </div>
     </section>
 
     <section id="homeView" class="hidden">
-      <div class="top">
-        <h1 id="hello">أهلًا</h1>
-        <span class="who" id="riderTag"></span>
-      </div>
+      <div class="hello"><h1 id="hello"></h1><span class="id" id="riderTag"></span></div>
 
-      <ol class="steps" id="steps" aria-label="مراحل الأوردر">
-        <li data-stage="declared" style="--c:var(--declared)">معاك أوردر<small></small></li>
-        <li data-stage="arrived" style="--c:var(--arrived)">وصلت المطعم<small></small></li>
-        <li data-stage="picked_up" style="--c:var(--picked)">استلمت<small></small></li>
-        <li data-stage="delivered" style="--c:var(--done)">سلّمت<small></small></li>
-      </ol>
+      <div id="ask" class="ask hidden" role="status"><span class="dot"></span><span id="askText"></span></div>
 
-      <div id="ask" class="ask hidden" role="status"></div>
-
-      <div class="status">
+      <div class="card">
+        <span class="badge" id="badge"></span>
         <h2 id="statusTitle"></h2>
-        <p class="muted" id="statusText"></p>
+        <p class="muted" id="statusText" style="margin-top:4px"></p>
+        <ol class="stepper" id="stepper"></ol>
+        <p class="note hidden" id="stickyNote"><span>📌</span><span id="stickyText"></span></p>
       </div>
 
-      <div class="actions" id="actions"></div>
-
-      <details id="settings">
-        <summary>الإعدادات</summary>
-        <div>
-          <div class="row">
+      <details class="card" id="settings" style="padding:0">
+        <summary id="settingsTitle"></summary>
+        <div class="body">
+          <div class="setting">
             <p id="pushState"></p>
-            <button id="enableBtn" class="btn-quiet">تفعيل الإشعارات</button>
-            <button id="testBtn" class="btn-quiet hidden">جرّب إشعار</button>
+            <button id="enableBtn" class="btn quiet"></button>
+            <button id="testBtn" class="btn quiet hidden"></button>
           </div>
-          <div class="row">
+          <div class="setting">
             <p id="liveState"></p>
-            <button id="liveBtn" class="btn-quiet">تشغيل مشاركة الموقع</button>
+            <button id="liveBtn" class="btn quiet"></button>
           </div>
-          <div class="row" id="installRow">
-            <p id="installText">ثبّت التطبيق على الشاشة الرئيسية علشان الإشعارات توصلك دايمًا.</p>
-            <button id="installBtn" class="btn-quiet hidden">إضافة للشاشة الرئيسية</button>
+          <div class="setting" id="installRow">
+            <p id="installText"></p>
+            <button id="installBtn" class="btn quiet hidden"></button>
           </div>
-          <div class="row">
-            <button id="logoutBtn" class="btn-quiet">تسجيل خروج</button>
-          </div>
+          <div class="setting"><button id="logoutBtn" class="btn quiet"></button></div>
         </div>
       </details>
     </section>
-
-    <p id="message" role="status" aria-live="polite"></p>
   </main>
 
+  <div class="dock hidden" id="dock"><div class="in"><div class="row" id="actions"></div></div></div>
+  <p id="message" role="status" aria-live="polite" class="hidden"></p>
+
   <script>
+    /* ===================== Translations ===================== */
+    const I18N = {
+      ar: {
+        dir: "rtl", app: "متابعة المناديب",
+        loginTitle: "تسجيل الدخول", loginSub: "أدخل رقمك مرة واحدة وسيتذكّرك الجهاز.",
+        idLabel: "رقم المندوب", login: "دخول", checking: "جارٍ التحقق...",
+        hello: "أهلاً", hello_name: "أهلاً {n}", loading: "جارٍ التحميل...",
+        badge: { idle: "بدون طلب", declared: "طلب جديد", arrived: "في المطعم", picked_up: "في التوصيل" },
+        title: { idle: "لا يوجد طلب معك", declared: "معك طلب", arrived: "أنت عند المطعم", picked_up: "الطلب معك" },
+        text: {
+          idle: "عند وصول طلب إليك اضغط «معي طلب».",
+          declared: "في الطريق إلى المطعم.",
+          arrived: "عند استلام الطلب اضغط «استلمت الطلب».",
+          picked_up: "في الطريق إلى العميل.",
+        },
+        steps: { declared: "معي طلب", arrived: "وصلت المطعم", picked_up: "استلمت الطلب", delivered: "سلّمت الطلب" },
+        ask: { have_order: "الإدارة تسأل: هل معك طلب الآن؟", picked_up: "الإدارة تسأل: هل استلمت الطلب؟", delivered: "الإدارة تسأل: هل سلّمت الطلب؟" },
+        act: { have_order: "نعم، معي طلب", no_order: "لا، ليس معي طلب", arrived: "وصلت المطعم", picked_up: "استلمت الطلب", delivered: "سلّمت الطلب", not_yet: "ليس بعد", cancel: "إلغاء الطلب (ضغطت بالخطأ)" },
+        confirmCancel: "هل تريد إلغاء الطلب؟",
+        done: { have_order: "تم تسجيل الطلب.", no_order: "تم التسجيل: لا يوجد طلب.", arrived: "تم تسجيل وصولك للمطعم.", picked_up: "تم تسجيل استلام الطلب.", delivered: "تم تسليم الطلب. شكراً لك!", cancel: "تم إلغاء الطلب.", not_yet: "حسناً، سنسألك مرة أخرى بعد قليل." },
+        noLoc: "(سُجّل بدون موقع، فعّل الموقع من إعدادات المتصفح)",
+        locating: "جارٍ تحديد موقعك...",
+        sticky: "سيبقى التنبيه مثبّتاً حتى تسليم الطلب.",
+        settings: "الإعدادات",
+        pushOn: "الإشعارات مفعّلة على جهازك ✅", pushOff: "الإشعارات متوقفة على هذا الجهاز.",
+        pushIos: "على الآيفون: أضف التطبيق إلى الشاشة الرئيسية أولاً، وافتحه من الأيقونة، ثم فعّل الإشعارات.",
+        enable: "تفعيل الإشعارات", enabling: "جارٍ التفعيل...", enabled: "تم تفعيل الإشعارات.",
+        test: "تجربة إشعار", testing: "جارٍ إرسال إشعار تجريبي... أغلق الشاشة وانتظر ثوانٍ.", testSent: "تم الإرسال.",
+        liveOn: "موقعك يُشارك مع الإدارة طالما التطبيق مفتوح.", liveOff: "مشاركة الموقع متوقفة. يُسجَّل الموقع عند الضغط على الأزرار فقط.",
+        liveStart: "تشغيل مشاركة الموقع", liveStop: "إيقاف مشاركة الموقع",
+        liveDenied: "تم رفض الموقع. فعّله من إعدادات المتصفح.",
+        installIos: "من زر المشاركة في سفاري اختر «إضافة إلى الشاشة الرئيسية» ثم افتح التطبيق من الأيقونة.",
+        installReady: "ثبّت التطبيق على الشاشة الرئيسية لتصلك الإشعارات دائماً.",
+        installChrome: "من قائمة كروم (⋮) اختر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية».",
+        install: "إضافة إلى الشاشة الرئيسية",
+        logout: "تسجيل الخروج", confirmLogout: "تسجيل الخروج؟ ستحتاج إلى إدخال رقمك مرة أخرى.", loggedOut: "تم تسجيل الخروج.",
+        e: { id_required: "أدخل رقم المندوب.", not_registered: "هذا الرقم غير مسجّل. تواصل مع الإدارة.", network: "تعذّر الاتصال. تأكد من الإنترنت وحاول مرة أخرى.", offline: "لا يوجد اتصال بالإنترنت حالياً.", session: "انتهت الجلسة. سجّل الدخول مرة أخرى.", generic: "حدث خطأ، حاول مرة أخرى.", no_order: "سجّل الطلب أولاً.", unsupported: "هذا المتصفح لا يدعم الإشعارات.", perm: "يجب السماح بالإشعارات حتى يعمل التطبيق.", server: "الخادم غير جاهز للإشعارات. تواصل مع الإدارة.", push_expired: "انتهى الاشتراك. فعّل الإشعارات من جديد.", push_off: "الإشعارات غير مفعّلة." },
+      },
+      ur: {
+        dir: "rtl", app: "رائیڈر ٹریکنگ",
+        loginTitle: "لاگ اِن", loginSub: "اپنا نمبر ایک بار درج کریں، ڈیوائس یاد رکھے گی۔",
+        idLabel: "رائیڈر نمبر", login: "داخل ہوں", checking: "تصدیق ہو رہی ہے...",
+        hello: "خوش آمدید", hello_name: "خوش آمدید {n}", loading: "لوڈ ہو رہا ہے...",
+        badge: { idle: "کوئی آرڈر نہیں", declared: "نیا آرڈر", arrived: "ریسٹورنٹ پر", picked_up: "ڈیلیوری پر" },
+        title: { idle: "آپ کے پاس کوئی آرڈر نہیں", declared: "آپ کے پاس آرڈر ہے", arrived: "آپ ریسٹورنٹ پر ہیں", picked_up: "آرڈر آپ کے پاس ہے" },
+        text: {
+          idle: "آرڈر ملنے پر «میرے پاس آرڈر ہے» دبائیں۔",
+          declared: "ریسٹورنٹ کی طرف جا رہے ہیں۔",
+          arrived: "آرڈر ملتے ہی «آرڈر لے لیا» دبائیں۔",
+          picked_up: "کسٹمر کی طرف جا رہے ہیں۔",
+        },
+        steps: { declared: "میرے پاس آرڈر ہے", arrived: "ریسٹورنٹ پہنچ گیا", picked_up: "آرڈر لے لیا", delivered: "آرڈر ڈیلیور کر دیا" },
+        ask: { have_order: "انتظامیہ پوچھ رہی ہے: کیا آپ کے پاس ابھی آرڈر ہے؟", picked_up: "انتظامیہ پوچھ رہی ہے: کیا آپ نے آرڈر لے لیا؟", delivered: "انتظامیہ پوچھ رہی ہے: کیا آپ نے آرڈر ڈیلیور کر دیا؟" },
+        act: { have_order: "جی، آرڈر ہے", no_order: "نہیں، آرڈر نہیں ہے", arrived: "ریسٹورنٹ پہنچ گیا", picked_up: "آرڈر لے لیا", delivered: "آرڈر ڈیلیور کر دیا", not_yet: "ابھی نہیں", cancel: "آرڈر منسوخ کریں (غلطی سے دبایا)" },
+        confirmCancel: "کیا آپ آرڈر منسوخ کرنا چاہتے ہیں؟",
+        done: { have_order: "آرڈر درج ہو گیا۔", no_order: "درج ہو گیا: کوئی آرڈر نہیں۔", arrived: "ریسٹورنٹ پہنچنا درج ہو گیا۔", picked_up: "آرڈر لینا درج ہو گیا۔", delivered: "آرڈر ڈیلیور ہو گیا۔ شکریہ!", cancel: "آرڈر منسوخ ہو گیا۔", not_yet: "ٹھیک ہے، کچھ دیر بعد دوبارہ پوچھیں گے۔" },
+        noLoc: "(لوکیشن کے بغیر درج ہوا، براؤزر سیٹنگز میں لوکیشن آن کریں)",
+        locating: "آپ کی لوکیشن معلوم کی جا رہی ہے...",
+        sticky: "آرڈر ڈیلیور ہونے تک یہ اطلاع قائم رہے گی۔",
+        settings: "سیٹنگز",
+        pushOn: "آپ کی ڈیوائس پر اطلاعات فعال ہیں ✅", pushOff: "اس ڈیوائس پر اطلاعات بند ہیں۔",
+        pushIos: "آئی فون پر: پہلے ایپ کو ہوم اسکرین پر شامل کریں، آئیکن سے کھولیں، پھر اطلاعات فعال کریں۔",
+        enable: "اطلاعات فعال کریں", enabling: "فعال ہو رہا ہے...", enabled: "اطلاعات فعال ہو گئیں۔",
+        test: "ٹیسٹ اطلاع", testing: "ٹیسٹ اطلاع بھیجی جا رہی ہے... اسکرین بند کر کے چند سیکنڈ انتظار کریں۔", testSent: "بھیج دی گئی۔",
+        liveOn: "ایپ کھلی ہونے تک آپ کی لوکیشن انتظامیہ کے ساتھ شیئر ہوتی ہے۔", liveOff: "لوکیشن شیئرنگ بند ہے۔ صرف بٹن دبانے پر لوکیشن درج ہوتی ہے۔",
+        liveStart: "لوکیشن شیئرنگ چالو کریں", liveStop: "لوکیشن شیئرنگ بند کریں",
+        liveDenied: "لوکیشن کی اجازت نہیں ملی۔ براؤزر سیٹنگز میں آن کریں۔",
+        installIos: "سفاری میں شیئر بٹن سے «ہوم اسکرین میں شامل کریں» چنیں، پھر آئیکن سے ایپ کھولیں۔",
+        installReady: "اطلاعات ہمیشہ ملنے کے لیے ایپ کو ہوم اسکرین پر انسٹال کریں۔",
+        installChrome: "کروم مینو (⋮) سے «ایپ انسٹال کریں» یا «ہوم اسکرین میں شامل کریں» چنیں۔",
+        install: "ہوم اسکرین میں شامل کریں",
+        logout: "لاگ آؤٹ", confirmLogout: "لاگ آؤٹ کریں؟ دوبارہ نمبر درج کرنا ہوگا۔", loggedOut: "لاگ آؤٹ ہو گیا۔",
+        e: { id_required: "رائیڈر نمبر درج کریں۔", not_registered: "یہ نمبر رجسٹرڈ نہیں ہے۔ انتظامیہ سے رابطہ کریں۔", network: "کنکشن نہیں ہو سکا۔ انٹرنیٹ چیک کر کے دوبارہ کوشش کریں۔", offline: "فی الحال انٹرنیٹ نہیں ہے۔", session: "سیشن ختم ہو گیا۔ دوبارہ لاگ اِن کریں۔", generic: "خرابی ہوئی، دوبارہ کوشش کریں۔", no_order: "پہلے آرڈر درج کریں۔", unsupported: "یہ براؤزر اطلاعات کو سپورٹ نہیں کرتا۔", perm: "ایپ چلانے کے لیے اطلاعات کی اجازت دینا ضروری ہے۔", server: "سرور اطلاعات کے لیے تیار نہیں۔ انتظامیہ سے رابطہ کریں۔", push_expired: "سبسکرپشن ختم ہو گئی۔ اطلاعات دوبارہ فعال کریں۔", push_off: "اطلاعات فعال نہیں ہیں۔" },
+      },
+      bn: {
+        dir: "ltr", app: "রাইডার ট্র্যাকিং",
+        loginTitle: "লগইন", loginSub: "একবার আপনার নম্বর দিন, ডিভাইস মনে রাখবে।",
+        idLabel: "রাইডার নম্বর", login: "প্রবেশ করুন", checking: "যাচাই করা হচ্ছে...",
+        hello: "স্বাগতম", hello_name: "স্বাগতম {n}", loading: "লোড হচ্ছে...",
+        badge: { idle: "কোনো অর্ডার নেই", declared: "নতুন অর্ডার", arrived: "রেস্টুরেন্টে", picked_up: "ডেলিভারিতে" },
+        title: { idle: "আপনার কাছে কোনো অর্ডার নেই", declared: "আপনার কাছে অর্ডার আছে", arrived: "আপনি রেস্টুরেন্টে আছেন", picked_up: "অর্ডার আপনার কাছে" },
+        text: {
+          idle: "অর্ডার পেলে «আমার কাছে অর্ডার আছে» চাপুন।",
+          declared: "রেস্টুরেন্টের পথে।",
+          arrived: "অর্ডার নেওয়া হলে «অর্ডার নিয়েছি» চাপুন।",
+          picked_up: "গ্রাহকের পথে।",
+        },
+        steps: { declared: "আমার কাছে অর্ডার আছে", arrived: "রেস্টুরেন্টে পৌঁছেছি", picked_up: "অর্ডার নিয়েছি", delivered: "অর্ডার ডেলিভারি দিয়েছি" },
+        ask: { have_order: "ম্যানেজমেন্ট জানতে চায়: এখন কি আপনার কাছে অর্ডার আছে?", picked_up: "ম্যানেজমেন্ট জানতে চায়: আপনি কি অর্ডার নিয়েছেন?", delivered: "ম্যানেজমেন্ট জানতে চায়: আপনি কি অর্ডার ডেলিভারি দিয়েছেন?" },
+        act: { have_order: "হ্যাঁ, অর্ডার আছে", no_order: "না, অর্ডার নেই", arrived: "রেস্টুরেন্টে পৌঁছেছি", picked_up: "অর্ডার নিয়েছি", delivered: "অর্ডার ডেলিভারি দিয়েছি", not_yet: "এখনও না", cancel: "অর্ডার বাতিল (ভুলে চেপেছি)" },
+        confirmCancel: "আপনি কি অর্ডার বাতিল করতে চান?",
+        done: { have_order: "অর্ডার নথিভুক্ত হয়েছে।", no_order: "নথিভুক্ত: কোনো অর্ডার নেই।", arrived: "রেস্টুরেন্টে পৌঁছানো নথিভুক্ত হয়েছে।", picked_up: "অর্ডার নেওয়া নথিভুক্ত হয়েছে।", delivered: "অর্ডার ডেলিভারি হয়েছে। ধন্যবাদ!", cancel: "অর্ডার বাতিল হয়েছে।", not_yet: "ঠিক আছে, কিছুক্ষণ পর আবার জিজ্ঞাসা করব।" },
+        noLoc: "(লোকেশন ছাড়া নথিভুক্ত হয়েছে, ব্রাউজার সেটিংসে লোকেশন চালু করুন)",
+        locating: "আপনার লোকেশন নির্ণয় করা হচ্ছে...",
+        sticky: "অর্ডার ডেলিভারি না হওয়া পর্যন্ত এই নোটিফিকেশন থাকবে।",
+        settings: "সেটিংস",
+        pushOn: "আপনার ডিভাইসে নোটিফিকেশন চালু আছে ✅", pushOff: "এই ডিভাইসে নোটিফিকেশন বন্ধ।",
+        pushIos: "আইফোনে: আগে অ্যাপটি হোম স্ক্রিনে যোগ করুন, আইকন থেকে খুলুন, তারপর নোটিফিকেশন চালু করুন।",
+        enable: "নোটিফিকেশন চালু করুন", enabling: "চালু করা হচ্ছে...", enabled: "নোটিফিকেশন চালু হয়েছে।",
+        test: "টেস্ট নোটিফিকেশন", testing: "টেস্ট নোটিফিকেশন পাঠানো হচ্ছে... স্ক্রিন বন্ধ করে কয়েক সেকেন্ড অপেক্ষা করুন।", testSent: "পাঠানো হয়েছে।",
+        liveOn: "অ্যাপ খোলা থাকলে আপনার লোকেশন ম্যানেজমেন্টের সাথে শেয়ার হয়।", liveOff: "লোকেশন শেয়ারিং বন্ধ। শুধু বোতাম চাপলে লোকেশন নথিভুক্ত হয়।",
+        liveStart: "লোকেশন শেয়ারিং চালু করুন", liveStop: "লোকেশন শেয়ারিং বন্ধ করুন",
+        liveDenied: "লোকেশনের অনুমতি দেওয়া হয়নি। ব্রাউজার সেটিংসে চালু করুন।",
+        installIos: "সাফারিতে শেয়ার বোতাম থেকে «হোম স্ক্রিনে যোগ করুন» বেছে নিন, তারপর আইকন থেকে অ্যাপ খুলুন।",
+        installReady: "নোটিফিকেশন সবসময় পেতে অ্যাপটি হোম স্ক্রিনে ইনস্টল করুন।",
+        installChrome: "ক্রোম মেনু (⋮) থেকে «অ্যাপ ইনস্টল করুন» বা «হোম স্ক্রিনে যোগ করুন» বেছে নিন।",
+        install: "হোম স্ক্রিনে যোগ করুন",
+        logout: "লগআউট", confirmLogout: "লগআউট করবেন? আবার নম্বর দিতে হবে।", loggedOut: "লগআউট হয়েছে।",
+        e: { id_required: "রাইডার নম্বর দিন।", not_registered: "এই নম্বর নিবন্ধিত নয়। ম্যানেজমেন্টের সাথে যোগাযোগ করুন।", network: "সংযোগ করা যায়নি। ইন্টারনেট দেখে আবার চেষ্টা করুন।", offline: "এখন ইন্টারনেট নেই।", session: "সেশন শেষ। আবার লগইন করুন।", generic: "ত্রুটি হয়েছে, আবার চেষ্টা করুন।", no_order: "আগে অর্ডার নথিভুক্ত করুন।", unsupported: "এই ব্রাউজার নোটিফিকেশন সমর্থন করে না।", perm: "অ্যাপ চালাতে নোটিফিকেশনের অনুমতি দিতে হবে।", server: "সার্ভার নোটিফিকেশনের জন্য প্রস্তুত নয়। ম্যানেজমেন্টের সাথে যোগাযোগ করুন।", push_expired: "সাবস্ক্রিপশন শেষ। নোটিফিকেশন আবার চালু করুন।", push_off: "নোটিফিকেশন চালু নেই।" },
+      },
+    };
+    const LANGS = ["ar", "ur", "bn"];
+
+    /* ===================== Helpers ===================== */
     const $ = (id) => document.getElementById(id);
-    const msg = (t) => { $("message").textContent = t || ""; };
-    const getToken = () => localStorage.getItem("riderToken");
-
+    const getToken = () => { try { return localStorage.getItem("riderToken"); } catch { return null; } };
+    const store = {
+      get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+      set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+      del(k) { try { localStorage.removeItem(k); } catch {} },
+    };
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    const isStandalone =
-      window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+    const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
 
-    const fmtTime = (ms) =>
-      ms ? new Date(ms).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "";
+    function detectLang() {
+      const saved = store.get("lang");
+      if (LANGS.includes(saved)) return saved;
+      const n = (navigator.language || "").toLowerCase();
+      if (n.startsWith("ur")) return "ur";
+      if (n.startsWith("bn")) return "bn";
+      return "ar";
+    }
+    let lang = detectLang();
+    const T = () => I18N[lang];
+
+    let msgTimer = null;
+    function msg(text, sticky) {
+      const el = $("message");
+      clearTimeout(msgTimer);
+      if (!text) { el.classList.add("hidden"); el.textContent = ""; return; }
+      el.textContent = text;
+      el.classList.remove("hidden");
+      if (!sticky) msgTimer = setTimeout(() => msg(""), 5000);
+    }
+    const errText = (code, fallback) => (T().e[code] || fallback || T().e.generic);
+
+    const fmtTime = (ms) => (ms ? new Date(ms).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "");
 
     async function post(path, data) {
-      const res = await fetch(path, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
+      const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
       return { status: res.status, body: await res.json().catch(() => ({})) };
     }
 
-    /* ---------------- الشاشات ---------------- */
-    function renderLoading() {
-      $("ask").classList.add("hidden");
-      $("actions").replaceChildren();
-      $("statusTitle").textContent = "جاري التحميل...";
-      $("statusText").textContent = "";
-      document.querySelectorAll("#steps li").forEach((li) => {
-        li.classList.remove("on");
-        li.querySelector("small").textContent = "";
-      });
+    /* ===================== Language ===================== */
+    let last = { order: null, prompt: null };
+    let rider = null;
+
+    function applyLang() {
+      const t = T();
+      document.documentElement.lang = lang;
+      document.documentElement.dir = t.dir;
+      document.querySelectorAll(".langs button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
+      $("appName").textContent = t.app;
+      document.title = t.app;
+      $("loginTitle").textContent = t.loginTitle;
+      $("loginSub").textContent = t.loginSub;
+      $("idLabel").textContent = t.idLabel;
+      $("loginBtn").textContent = t.login;
+      $("settingsTitle").textContent = t.settings;
+      $("enableBtn").textContent = t.enable;
+      $("testBtn").textContent = t.test;
+      $("installBtn").textContent = t.install;
+      $("logoutBtn").textContent = t.logout;
+      $("stickyText").textContent = t.sticky;
+      if (rider) {
+        $("hello").textContent = rider.name && rider.name !== rider.id ? t.hello_name.replace("{n}", rider.name) : t.hello;
+        $("riderTag").textContent = "#" + rider.id;
+      }
+      render(last);
+      renderLive();
+      renderInstall();
+      setPushUI(pushOn);
     }
 
+    document.querySelectorAll(".langs button").forEach((b) =>
+      b.addEventListener("click", async () => {
+        lang = b.dataset.lang;
+        store.set("lang", lang);
+        applyLang();
+        if (getToken()) {
+          try { await post("/api/lang", { token: getToken(), lang }); } catch {}
+          syncNotification();
+        }
+      })
+    );
+
+    /* ===================== Views ===================== */
     function showLogin() {
       $("homeView").classList.add("hidden");
       $("loginView").classList.remove("hidden");
+      $("dock").classList.add("hidden");
+      document.body.classList.add("no-dock");
       stopLive();
     }
 
-    let rider = null;
-    function showHome(r, pushEnabled) {
+    function showHome(r) {
       rider = r;
       $("loginView").classList.add("hidden");
       $("homeView").classList.remove("hidden");
-      $("hello").textContent = r.name && r.name !== r.id ? "أهلًا " + r.name : "أهلًا";
-      $("riderTag").textContent = "رقم " + r.id;
-      setPushUI(!!pushEnabled);
-      renderInstall();
+      $("hello").textContent = r.name && r.name !== r.id ? T().hello_name.replace("{n}", r.name) : T().hello;
+      $("riderTag").textContent = "#" + r.id;
       renderLive();
+      renderInstall();
     }
 
-    /* ---------------- حالة الأوردر ---------------- */
+    /* ===================== Order state ===================== */
     const STAGES = ["declared", "arrived", "picked_up", "delivered"];
     let busy = false;
 
     function mkBtn(action, label, cls) {
       const b = document.createElement("button");
+      b.className = "btn " + (cls || "");
       b.textContent = label;
-      if (cls) b.className = cls;
       b.addEventListener("click", () => act(action));
       return b;
     }
 
     function render(s) {
-      const o = s.order, p = s.prompt;
+      last = s || { order: null, prompt: null };
+      const t = T();
+      const o = last.order, p = last.prompt;
+      const stage = o ? o.stage : "idle";
 
-      // المراحل
-      const stageIdx = o ? STAGES.indexOf(o.stage) : -1;
+      // banner
+      const askText = p && t.ask[p.type];
+      $("ask").classList.toggle("hidden", !askText);
+      $("ask").classList.toggle("late", !!(p && p.status === "missed"));
+      $("askText").textContent = askText || "";
+
+      // card
+      const badge = $("badge");
+      badge.className = "badge b-" + stage;
+      badge.textContent = t.badge[stage] || "";
+      $("statusTitle").textContent = t.title[stage] || "";
+      $("statusText").textContent = t.text[stage] || "";
+
+      // stepper
+      const idx = o ? STAGES.indexOf(o.stage) : -1;
       const times = o ? [o.declared_at, o.arrived_at, o.picked_at, null] : [];
-      document.querySelectorAll("#steps li").forEach((li, i) => {
-        li.classList.toggle("on", i <= stageIdx);
-        li.querySelector("small").textContent = times[i] ? fmtTime(times[i]) : "";
+      const ol = $("stepper");
+      ol.replaceChildren();
+      STAGES.forEach((st, i) => {
+        const li = document.createElement("li");
+        if (o && i <= idx) li.className = i === idx ? "now done" : "done";
+        const n = document.createElement("span");
+        n.className = "n";
+        n.textContent = o && i < idx ? "✓" : String(i + 1);
+        const label = document.createElement("span");
+        label.textContent = t.steps[st];
+        li.append(n, label);
+        if (times[i]) {
+          const tm = document.createElement("span");
+          tm.className = "t";
+          tm.textContent = fmtTime(times[i]);
+          li.append(tm);
+        }
+        ol.append(li);
       });
+      $("stickyNote").classList.toggle("hidden", !o);
 
-      // سؤال الإدارة
-      const ask = $("ask");
-      const askText = {
-        have_order: "الإدارة بتسأل: معاك أوردر دلوقتي؟",
-        picked_up: "الإدارة بتسأل: استلمت الأوردر؟",
-        delivered: "الإدارة بتسأل: سلّمت الأوردر؟",
-      }[p && p.type];
-      ask.classList.toggle("hidden", !askText);
-      ask.classList.toggle("late", !!(p && p.status === "missed"));
-      ask.textContent = askText || "";
-
-      // النص والأزرار
+      // actions
       const actions = $("actions");
       actions.replaceChildren();
+      actions.classList.remove("two");
       if (!o) {
-        $("statusTitle").textContent = "مفيش أوردر معاك";
-        $("statusText").textContent = "أول ما يجيلك أوردر دوس «معايا أوردر».";
-        actions.append(mkBtn("have_order", "معايا أوردر", "btn-declared"));
-        if (p && p.type === "have_order") actions.append(mkBtn("no_order", "لأ، مفيش أوردر", "btn-quiet"));
-      } else if (o.stage === "declared") {
-        $("statusTitle").textContent = "معاك أوردر";
-        $("statusText").textContent = "في الطريق للمطعم.";
-        actions.append(mkBtn("arrived", "وصلت المطعم", "btn-arrived"));
-        actions.append(mkBtn("picked_up", "استلمت الأوردر", "btn-picked"));
-      } else if (o.stage === "arrived") {
-        $("statusTitle").textContent = "أنت عند المطعم";
-        $("statusText").textContent = "أول ما تستلم الأوردر دوس استلمت.";
-        actions.append(mkBtn("picked_up", "استلمت الأوردر", "btn-picked"));
+        actions.append(mkBtn("have_order", t.act.have_order, "amber"));
+        if (p && p.type === "have_order") actions.append(mkBtn("no_order", t.act.no_order, "quiet"));
       } else {
-        $("statusTitle").textContent = "الأوردر معاك";
-        $("statusText").textContent = "في الطريق للعميل.";
-        actions.append(mkBtn("delivered", "سلّمت الأوردر", "btn-done"));
+        if (o.stage === "declared") {
+          actions.append(mkBtn("arrived", t.act.arrived, "violet"));
+          actions.append(mkBtn("picked_up", t.act.picked_up, "blue"));
+        } else if (o.stage === "arrived") {
+          actions.append(mkBtn("picked_up", t.act.picked_up, "blue"));
+        } else {
+          actions.append(mkBtn("delivered", t.act.delivered, "green"));
+        }
+        if (p && (p.type === "picked_up" || p.type === "delivered")) actions.append(mkBtn("not_yet", t.act.not_yet, "quiet"));
+        actions.append(mkBtn("cancel", t.act.cancel, "danger"));
       }
-      if (o && p && (p.type === "picked_up" || p.type === "delivered")) {
-        actions.append(mkBtn("not_yet", "لسه", "btn-quiet"));
-      }
-      if (o) actions.append(mkBtn("cancel", "إلغاء الأوردر (دوست بالغلط)", "btn-danger"));
-    }
-
-    function setBusy(v) {
-      busy = v;
-      document.querySelectorAll("#actions button").forEach((b) => (b.disabled = v));
+      $("dock").classList.toggle("hidden", $("homeView").classList.contains("hidden"));
+      document.body.classList.toggle("no-dock", $("homeView").classList.contains("hidden"));
+      if (busy) document.querySelectorAll("#actions button").forEach((b) => (b.disabled = true));
     }
 
     function getPos() {
       return new Promise((resolve) => {
         if (!navigator.geolocation) return resolve(null);
+        // an unanswered permission prompt never times out by itself, so cap the wait
+        setTimeout(() => resolve(null), 8000);
         navigator.geolocation.getCurrentPosition(
           (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy }),
           () => resolve(null),
@@ -295,98 +546,116 @@
       });
     }
 
-    async function clearNotifications() {
+    /* Keep the pinned notification in step with the app */
+    async function syncNotification() {
       try {
+        if (!("serviceWorker" in navigator)) return;
         const reg = await navigator.serviceWorker.getRegistration();
-        if (reg) (await reg.getNotifications()).forEach((n) => n.close());
+        const target = (reg && (reg.active || reg.waiting)) || navigator.serviceWorker.controller;
+        if (target) target.postMessage({ type: "sync", token: getToken() });
+      } catch {}
+    }
+    async function giveTokenToWorker() {
+      try {
+        if (!("serviceWorker" in navigator)) return;
+        const reg = await navigator.serviceWorker.ready;
+        if (reg.active) reg.active.postMessage({ type: "token", token: getToken() });
       } catch {}
     }
 
-    const DONE_MSG = {
-      have_order: "اتسجّل إن معاك أوردر.",
-      no_order: "تمام، اتسجّل إن مفيش أوردر.",
-      arrived: "اتسجّل إنك وصلت المطعم.",
-      picked_up: "اتسجّل إنك استلمت الأوردر.",
-      delivered: "تمام، الأوردر اتسلّم. شكرًا!",
-      cancel: "اتلغى الأوردر.",
-      not_yet: "تمام، هنسألك تاني بعد شوية.",
-    };
+    const NEEDS_LOC = ["have_order", "arrived", "picked_up", "delivered"];
 
     async function act(action) {
       if (busy) return;
-      if (action === "cancel" && !confirm("متأكد إنك عايز تلغي الأوردر؟")) return;
-      setBusy(true);
+      if (action === "cancel" && !confirm(T().confirmCancel)) return;
+      busy = true;
+      document.querySelectorAll("#actions button").forEach((b) => (b.disabled = true));
       try {
         let loc = null;
-        if (["have_order", "arrived", "picked_up", "delivered"].includes(action)) {
-          msg("بنحدد موقعك...");
+        if (NEEDS_LOC.includes(action)) {
+          msg(T().locating, true);
           loc = await getPos();
         }
         const { status, body } = await post("/api/respond", { token: getToken(), action, ...(loc || {}) });
         if (status === 401) {
-          localStorage.removeItem("riderToken");
+          store.del("riderToken");
           showLogin();
-          return msg("انتهت الجلسة. سجّل دخول تاني.");
+          return msg(errText("session"));
         }
-        if (!body.ok) return msg(body.error || "حصل خطأ، جرّب تاني.");
+        if (!body.ok) return msg(errText(body.code));
         render(body);
-        clearNotifications();
-        const needsLoc = ["have_order", "arrived", "picked_up", "delivered"].includes(action);
-        msg(DONE_MSG[action] + (needsLoc && !loc ? " (اتسجّل من غير موقع، فعّل الموقع من إعدادات المتصفح)" : ""));
+        syncNotification();
+        msg(T().done[action] + (NEEDS_LOC.includes(action) && !loc ? " " + T().noLoc : ""));
       } catch {
-        msg("تعذر الاتصال. تأكد من الإنترنت وجرّب تاني.");
+        msg(errText("network"));
       } finally {
-        setBusy(false);
+        busy = false;
+        render(last);
       }
     }
 
+    let pushOn = false;
     async function refresh() {
       const token = getToken();
       if (!token) return;
       try {
         const { status, body } = await post("/api/me", { token });
         if (body.ok) {
-          if ($("homeView").classList.contains("hidden")) showHome(body.rider, body.pushEnabled);
-          setPushUI(!!body.pushEnabled);
-          if (!busy) render(body);
+          if (body.lang && !store.get("lang")) { lang = body.lang; store.set("lang", lang); }
+          if ($("homeView").classList.contains("hidden")) showHome(body.rider);
+          rider = body.rider;
+          pushOn = !!body.pushEnabled;
+          setPushUI(pushOn);
+          if (!busy) { applyLang(); render(body); }
+          giveTokenToWorker();
+          syncNotification();
         } else if (status === 401) {
-          localStorage.removeItem("riderToken");
+          store.del("riderToken");
           showLogin();
         }
       } catch {
-        if (!busy) msg("مفيش اتصال بالإنترنت حاليًا.");
+        if (!busy) msg(errText("offline"));
       }
     }
 
-    /* ---------------- تسجيل الدخول ---------------- */
+    /* ===================== Login ===================== */
     $("loginBtn").addEventListener("click", async () => {
       const id = $("riderId").value.trim();
-      if (!id) return msg("اكتب رقم المندوب.");
-      msg("جاري التحقق...");
+      if (!id) return msg(errText("id_required"));
+      msg(T().checking, true);
       try {
-        const { body } = await post("/api/login", { id });
-        if (!body.ok) return msg(body.error || "حصل خطأ");
-        localStorage.setItem("riderToken", body.token);
-        localStorage.setItem("riderInfo", JSON.stringify(body.rider));
+        const { body } = await post("/api/login", { id, lang });
+        if (!body.ok) return msg(errText(body.code, body.error));
+        store.set("riderToken", body.token);
+        store.set("riderInfo", JSON.stringify(body.rider));
         msg("");
-        showHome(body.rider, false);
-        renderLoading();
+        showHome(body.rider);
+        render({ order: null, prompt: null });
         refresh();
       } catch {
-        msg("تعذر الاتصال. تأكد من الإنترنت.");
+        msg(errText("network"));
       }
     });
     $("riderId").addEventListener("keydown", (e) => { if (e.key === "Enter") $("loginBtn").click(); });
 
-    $("logoutBtn").addEventListener("click", () => {
-      if (!confirm("تسجيل الخروج؟ هتحتاج تكتب رقمك تاني.")) return;
-      localStorage.removeItem("riderToken");
-      localStorage.removeItem("riderInfo");
+    $("logoutBtn").addEventListener("click", async () => {
+      if (!confirm(T().confirmLogout)) return;
+      store.del("riderToken");
+      store.del("riderInfo");
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg) {
+          (await reg.getNotifications()).forEach((n) => n.close());
+          if (reg.active) reg.active.postMessage({ type: "token", token: null });
+        }
+      } catch {}
+      rider = null;
+      last = { order: null, prompt: null };
       showLogin();
-      msg("تم تسجيل الخروج.");
+      msg(T().loggedOut);
     });
 
-    /* ---------------- الإشعارات ---------------- */
+    /* ===================== Notifications ===================== */
     function urlBase64ToUint8Array(s) {
       const padding = "=".repeat((4 - (s.length % 4)) % 4);
       const raw = atob((s + padding).replace(/-/g, "+").replace(/_/g, "/"));
@@ -394,59 +663,59 @@
     }
 
     function setPushUI(enabled) {
+      pushOn = enabled;
       $("enableBtn").classList.toggle("hidden", enabled);
       $("testBtn").classList.toggle("hidden", !enabled);
-      $("pushState").textContent = enabled ? "الإشعارات شغّالة على جهازك ✅" : "الإشعارات مقفولة على جهازك.";
+      $("enableBtn").disabled = false;
+      $("pushState").textContent = enabled ? T().pushOn : T().pushOff;
       if (!enabled && isIOS && !isStandalone) {
         $("enableBtn").disabled = true;
-        $("pushState").textContent = "على الآيفون: ضيف التطبيق للشاشة الرئيسية الأول، وافتحه من الأيقونة، وبعدها فعّل الإشعارات.";
+        $("pushState").textContent = T().pushIos;
       }
     }
 
     $("enableBtn").addEventListener("click", async () => {
       if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
-        return msg("المتصفح ده مش بيدعم الإشعارات.");
+        return msg(errText("unsupported"));
       }
       try {
-        msg("جاري التفعيل...");
+        msg(T().enabling, true);
         const permission = await Notification.requestPermission();
-        if (permission !== "granted") return msg("لازم توافق على الإشعارات علشان تشتغل.");
+        if (permission !== "granted") return msg(errText("perm"));
         const reg = await navigator.serviceWorker.ready;
         const keyRes = await fetch("/api/vapid-key").then((r) => r.json());
-        if (!keyRes || !keyRes.key) return msg("السيرفر مش جاهز للإشعارات. كلّم الإدارة.");
+        if (!keyRes || !keyRes.key) return msg(errText("server"));
         let sub = await reg.pushManager.getSubscription();
         if (!sub) {
-          sub = await reg.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(keyRes.key),
-          });
+          sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(keyRes.key) });
         }
         const { body } = await post("/api/subscribe", { token: getToken(), subscription: sub.toJSON() });
-        if (!body.ok) return msg(body.error || "فشل حفظ الاشتراك");
+        if (!body.ok) return msg(errText(body.code));
         setPushUI(true);
-        msg("تم تفعيل الإشعارات.");
+        giveTokenToWorker();
+        msg(T().enabled);
       } catch (e) {
-        msg("حصل خطأ أثناء التفعيل: " + (e && e.message ? e.message : e));
+        msg(errText("generic") + " " + (e && e.message ? e.message : ""));
       }
     });
 
     $("testBtn").addEventListener("click", async () => {
-      msg("بنبعت إشعار تجريبي... اقفل الشاشة وانتظر ثواني.");
+      msg(T().testing, true);
       try {
         const { body } = await post("/api/test-push", { token: getToken() });
-        if (body.ok) msg("تم الإرسال.");
+        if (body.ok) msg(T().testSent);
         else {
-          if (/انتهى|غير مفعّلة/.test(body.error || "")) setPushUI(false);
-          msg(body.error || "فشل الإرسال");
+          if (body.code === "push_expired" || body.code === "push_off") setPushUI(false);
+          msg(errText(body.code));
         }
       } catch {
-        msg("تعذر الاتصال. تأكد من الإنترنت.");
+        msg(errText("network"));
       }
     });
 
-    /* ---------------- الموقع الحي (والتطبيق مفتوح بس) ---------------- */
+    /* ===================== Live location ===================== */
     let watchId = null, lastSent = 0;
-    const liveOn = () => localStorage.getItem("liveShare") === "1";
+    const liveOn = () => store.get("liveShare") === "1";
 
     function startLive() {
       if (watchId !== null || !navigator.geolocation) return;
@@ -455,56 +724,44 @@
           const now = Date.now();
           if (now - lastSent < 20000) return;
           lastSent = now;
-          post("/api/location", {
-            token: getToken(), lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy,
-          }).catch(() => {});
+          post("/api/location", { token: getToken(), lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy }).catch(() => {});
         },
         (err) => {
           if (err && err.code === 1) {
-            localStorage.removeItem("liveShare");
+            store.del("liveShare");
             stopLive();
             renderLive();
-            msg("الموقع مرفوض. فعّله من إعدادات المتصفح للموقع ده.");
+            msg(T().liveDenied);
           }
         },
         { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 }
       );
     }
     function stopLive() {
-      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+      if (watchId !== null && navigator.geolocation) navigator.geolocation.clearWatch(watchId);
       watchId = null;
     }
     function renderLive() {
       const on = liveOn();
-      $("liveState").textContent = on
-        ? "موقعك بيتشارك مع الإدارة طول ما التطبيق مفتوح."
-        : "مشاركة الموقع مقفولة. الموقع بيتسجّل وقت الأزرار بس.";
-      $("liveBtn").textContent = on ? "إيقاف مشاركة الموقع" : "تشغيل مشاركة الموقع";
-      if (on) startLive(); else stopLive();
+      $("liveState").textContent = on ? T().liveOn : T().liveOff;
+      $("liveBtn").textContent = on ? T().liveStop : T().liveStart;
+      if (on && getToken()) startLive(); else stopLive();
     }
     $("liveBtn").addEventListener("click", () => {
-      if (liveOn()) localStorage.removeItem("liveShare"); else localStorage.setItem("liveShare", "1");
+      if (liveOn()) store.del("liveShare"); else store.set("liveShare", "1");
       renderLive();
     });
 
-    /* ---------------- تثبيت التطبيق ---------------- */
+    /* ===================== Install ===================== */
     let deferredInstall = null;
-    window.addEventListener("beforeinstallprompt", (e) => {
-      e.preventDefault();
-      deferredInstall = e;
-      renderInstall();
-    });
+    window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); deferredInstall = e; renderInstall(); });
     window.addEventListener("appinstalled", () => { deferredInstall = null; renderInstall(); });
 
     function renderInstall() {
       if (isStandalone) return $("installRow").classList.add("hidden");
       $("installRow").classList.remove("hidden");
       $("installBtn").classList.toggle("hidden", !deferredInstall);
-      $("installText").textContent = isIOS
-        ? "من زر المشاركة في سفاري اختار «إضافة إلى الشاشة الرئيسية»، وافتح التطبيق من الأيقونة."
-        : deferredInstall
-          ? "ثبّت التطبيق على الشاشة الرئيسية علشان الإشعارات توصلك دايمًا."
-          : "من قائمة كروم (⋮) اختار «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية».";
+      $("installText").textContent = isIOS ? T().installIos : deferredInstall ? T().installReady : T().installChrome;
     }
     $("installBtn").addEventListener("click", async () => {
       if (!deferredInstall) return;
@@ -514,14 +771,46 @@
       renderInstall();
     });
 
-    /* ---------------- تشغيل ---------------- */
-    (function init() {
-      if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+    /* ===================== Start ===================== */
+    // Buttons on the notification open the app with ?do=action (or the worker posts a message)
+    let pendingDo = null;
+    function takeDo() {
+      try {
+        const u = new URL(location.href);
+        const a = u.searchParams.get("do");
+        if (a) { pendingDo = a; history.replaceState(null, "", u.pathname); }
+      } catch {}
+    }
+    function runPendingDo() {
+      if (!pendingDo || !getToken()) return;
+      const a = pendingDo;
+      pendingDo = null;
+      // only run steps that are valid right now, otherwise just show the screen
+      const stage = last.order ? last.order.stage : null;
+      const ok =
+        (a === "have_order" && !last.order) || a === "no_order" ||
+        (a === "arrived" && stage === "declared") ||
+        (a === "picked_up" && (stage === "declared" || stage === "arrived")) ||
+        (a === "delivered" && !!stage);
+      if (ok) act(a);
+    }
+
+    (async function init() {
+      takeDo();
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+        navigator.serviceWorker.addEventListener("message", (e) => {
+          if (e.data && e.data.type === "do") { pendingDo = e.data.action; refresh().then(runPendingDo); }
+        });
+      }
+      applyLang();
       if (getToken()) {
         let cached = null;
-        try { cached = JSON.parse(localStorage.getItem("riderInfo")); } catch {}
-        if (cached && cached.id) { showHome(cached, false); renderLoading(); }
-        refresh();
+        try { cached = JSON.parse(store.get("riderInfo")); } catch {}
+        if (cached && cached.id) { showHome(cached); render({ order: null, prompt: null }); }
+        $("statusTitle").textContent = T().loading;
+        await refresh();
+        runPendingDo();
       } else {
         showLogin();
       }
