@@ -636,7 +636,7 @@
   }
 
   function csv(rows) {
-    return "﻿" + rows.map((r) => r.map((c) => {
+    return "\ufeff" + rows.map((r) => r.map((c) => {
       let s = String(c ?? "");
       if (/^[=+\-@]/.test(s)) s = "'" + s;
       return '"' + s.replace(/"/g, '""') + '"';
@@ -691,7 +691,7 @@
   $("addCancel").addEventListener("click", () => $("addDlg").close());
   $("addForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const riders = $("addText").value.split(/\r?\n/).map((l) => l.replace(/[‎‏‪-‮﻿]/g, "").trim()).filter(Boolean).map((l) => {
+    const riders = $("addText").value.split(/\r?\n/).map((l) => l.replace(/[\u200e\u200f\u202a-\u202e\ufeff]/g, "").trim()).filter(Boolean).map((l) => {
       const m = l.match(/^([^,;\t ]+)[,;\t ]*(.*)$/);
       return { id: m[1], name: m[2].trim() };
     });
