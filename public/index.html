@@ -167,6 +167,58 @@
     .setting + .setting { border-top: 1px solid var(--line); margin-top: 14px; }
     .setting p { margin-bottom: 10px; font-size: 15px; }
 
+    /* tabs */
+    .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 4px; margin-bottom: 14px; }
+    .tabs button { border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 700; padding: 11px 8px; border-radius: 11px; min-height: 44px; cursor: pointer; }
+    .tabs button[aria-selected=true] { background: var(--brand-d); color: #fff; }
+    @media (prefers-color-scheme: dark) { .tabs button[aria-selected=true] { background: var(--brand); color: #04201d; } }
+
+    /* performance */
+    .profile { background: linear-gradient(145deg, #0f172a, #1e293b); color: #fff; border-radius: 20px; padding: 22px; margin-bottom: 14px; }
+    .profile .nm { font-size: 24px; font-weight: 800; line-height: 1.3; }
+    .profile .pid { color: #cbd5e1; font-size: 14px; margin-top: 2px; }
+    .profile .sl { color: #cbd5e1; font-size: 13px; margin-top: 14px; }
+    .segpill { display: inline-block; min-width: 72px; text-align: center; border-radius: 14px; padding: 8px 18px; font-size: 26px; font-weight: 900; margin-top: 4px; color: #fff; }
+    .change { border-radius: 18px; padding: 16px 18px; margin-bottom: 14px; border: 2px solid; }
+    .change.up { background: var(--green-soft); border-color: var(--green); }
+    .change.down { background: var(--red-soft); border-color: var(--red); }
+    .change.same { background: var(--blue-soft); border-color: var(--blue); }
+    .change.none { background: var(--surface); border: 1px dashed var(--line); color: var(--muted); text-align: center; font-size: 14px; }
+    .change .t { font-size: 17px; font-weight: 800; } .change .big { font-size: 30px; font-weight: 900; margin: 2px 0; direction: ltr; }
+    .change .s { font-size: 13px; opacity: .85; }
+    .change .why { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(128,128,128,.3); font-size: 14.5px; }
+    .change .why ul { margin: 6px 0 0; padding-inline-start: 20px; }
+    .target { border-radius: 18px; padding: 16px 18px; margin-bottom: 14px; border: 2px solid; }
+    .target.ok { background: var(--green-soft); border-color: var(--green); }
+    .target.bad { background: var(--red-soft); border-color: var(--red); }
+    .target .tt { font-size: 13.5px; font-weight: 700; opacity: .75; } .target .st { font-size: 19px; font-weight: 800; margin: 2px 0 10px; }
+    .tgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
+    .tgrid div { background: var(--surface); border-radius: 12px; padding: 10px 6px; text-align: center; }
+    .tgrid b { display: block; font-size: 22px; } .tgrid small { color: var(--muted); font-weight: 600; font-size: 11.5px; }
+    .target .ln { margin-top: 10px; font-size: 12.5px; opacity: .8; direction: ltr; }
+    .mgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0 14px; }
+    .metric { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px; box-shadow: var(--shadow); }
+    .metric .l { color: var(--muted); font-size: 12.5px; font-weight: 600; margin-bottom: 6px; line-height: 1.3; }
+    .metric .v { font-size: 22px; font-weight: 800; }
+    .sect { font-size: 18px; font-weight: 800; margin: 18px 2px 10px; }
+    .tips { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 20px; margin-top: 18px; box-shadow: var(--shadow); }
+    .tips .tt { font-size: 20px; font-weight: 800; margin-bottom: 8px; }
+    .goals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0; }
+    .goal { background: var(--green-soft); border-radius: 14px; padding: 12px 6px; text-align: center; }
+    .goal b { display: block; font-size: 22px; color: var(--green); } .goal small { color: var(--muted); font-size: 11.5px; font-weight: 600; }
+    .tnote { background: var(--amber-soft); color: var(--text); border: 1px solid var(--amber); border-radius: 12px; padding: 10px 12px; font-size: 14px; font-weight: 600; margin: 8px 0 14px; }
+    .tstep { display: flex; gap: 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin-bottom: 10px; }
+    .tstep .no { flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--brand-d); color: #fff; display: grid; place-items: center; font-weight: 800; }
+    @media (prefers-color-scheme: dark) { .tstep .no { background: var(--brand); color: #04201d; } }
+    .tstep .h { font-weight: 800; margin-bottom: 4px; } .tstep .ln { font-size: 14.5px; margin: 3px 0; }
+    .quote { background: #7c3f2b; color: #fff; border-radius: 12px; padding: 8px 12px; margin: 6px 0; display: inline-block; font-size: 14px; }
+    .avoid { background: var(--red-soft); border: 1px solid var(--red); border-radius: 12px; padding: 12px; margin-top: 14px; font-size: 14.5px; }
+    .closing { margin-top: 14px; font-weight: 700; text-align: center; }
+    .tipimg { width: 100%; border-radius: 14px; margin-top: 14px; border: 1px solid var(--line); }
+    .tipcap { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 4px; }
+    .foot { text-align: center; color: var(--muted); font-size: 12px; margin: 18px 0 8px; }
+    .empty { text-align: center; color: var(--muted); padding: 26px 14px; background: var(--surface); border: 1px dashed var(--line); border-radius: 16px; }
+
     #message {
       position: fixed; inset-inline: 16px; top: calc(env(safe-area-inset-top) + 64px); z-index: 8;
       max-width: 448px; margin: 0 auto; background: #0f1b2d; color: #fff; padding: 12px 16px; border-radius: 12px;
@@ -181,6 +233,7 @@
       <button type="button" data-lang="ar" aria-pressed="false">عربي</button>
       <button type="button" data-lang="ur" aria-pressed="false">اردو</button>
       <button type="button" data-lang="bn" aria-pressed="false">বাংলা</button>
+      <button type="button" data-lang="en" aria-pressed="false">EN</button>
     </div>
   </header>
 
@@ -203,6 +256,12 @@
     <section id="homeView" class="hidden">
       <div class="hello"><h1 id="hello"></h1><span class="id" id="riderTag"></span></div>
 
+      <div class="tabs" role="tablist">
+        <button type="button" role="tab" id="tabOrders" data-tab="orders" aria-selected="true"></button>
+        <button type="button" role="tab" id="tabPerf" data-tab="perf" aria-selected="false"></button>
+      </div>
+
+      <div id="ordersPane">
       <div id="ask" class="ask hidden" role="status"><span class="dot"></span><span id="askText"></span></div>
 
       <div class="card">
@@ -212,6 +271,9 @@
         <ol class="stepper" id="stepper"></ol>
         <p class="note hidden" id="stickyNote"><span>📌</span><span id="stickyText"></span></p>
       </div>
+      </div>
+
+      <div id="perfPane" class="hidden"></div>
 
       <details class="card" id="settings" style="padding:0">
         <summary id="settingsTitle"></summary>
@@ -241,8 +303,46 @@
   <script>
     /* ===================== Translations ===================== */
     const I18N = {
+      en: {
+        dir: "ltr", app: "Rider Tracking",
+        perf: {"tab_orders": "Orders", "tab_perf": "My Performance", "none": "No performance record was found for your ID yet.", "rider": "Rider", "idl": "Rider ID", "seg": "Segment", "overview": "📊 Performance Overview", "orders": "Total Orders", "in_time": "Orders Delivered On Time", "late": "Late Orders", "acceptance": "Acceptance Rate", "on_time": "On-Time Delivery", "verification": "Verification", "fail": "Fail Order", "final": "Final Quality Score", "footer": "Performance is based on the latest uploaded report.", "ch": {"up": "⬆️ Great job! Your Segment went up", "down": "⬇️ Your Segment went down", "same": "➡️ Your Segment stayed the same", "prev": "Previous Segment", "reason": "Why? These metrics are below the target:", "target": "Target", "was": "was", "generic": "Your overall delivery quality dropped compared to last time. Follow the tips below to improve.", "none": "No previous Segment recorded yet."}, "tg": {"title": "🎯 Daily Target", "ok": "✅ You are on track with the target", "warn": "⚠️ Warning: you are below the target", "yours": "Your orders", "required": "Required so far", "missing": "You are missing", "line": "Target: {t} orders/day × {d} days = {e} orders"}},
+        loginTitle: "Sign in", loginSub: "Enter your ID once and this device will remember you.",
+        idLabel: "Rider ID", login: "Continue", checking: "Checking...",
+        hello: "Welcome", hello_name: "Welcome {n}", loading: "Loading...",
+        badge: { idle: "No order", declared: "New order", arrived: "At restaurant", picked_up: "Delivering" },
+        title: { idle: "You have no order", declared: "You have an order", arrived: "You are at the restaurant", picked_up: "You have the order" },
+        text: {
+          idle: "When an order comes to you, press “I have an order”.",
+          declared: "On the way to the restaurant.",
+          arrived: "When you get the order, press “Picked up”.",
+          picked_up: "On the way to the customer.",
+        },
+        steps: { declared: "I have an order", arrived: "Arrived at restaurant", picked_up: "Picked up", delivered: "Delivered" },
+        ask: { have_order: "Management asks: do you have an order now?", picked_up: "Management asks: did you pick up the order?", delivered: "Management asks: did you deliver the order?" },
+        act: { have_order: "Yes, I have an order", no_order: "No, no order", arrived: "Arrived at restaurant", picked_up: "Picked up", delivered: "Delivered", not_yet: "Not yet", cancel: "Cancel order (pressed by mistake)" },
+        confirmCancel: "Cancel this order?",
+        done: { have_order: "Order recorded.", no_order: "Recorded: no order.", arrived: "Arrival at the restaurant recorded.", picked_up: "Pickup recorded.", delivered: "Order delivered. Thank you!", cancel: "Order cancelled.", not_yet: "OK, we will ask again shortly." },
+        noLoc: "(recorded without location, enable location in browser settings)",
+        locating: "Getting your location...",
+        sticky: "The alert stays pinned until the order is delivered.",
+        settings: "Settings",
+        pushOn: "Notifications are on for this device ✅", pushOff: "Notifications are off on this device.",
+        pushIos: "On iPhone: add the app to your Home Screen first, open it from the icon, then enable notifications.",
+        enable: "Enable notifications", enabling: "Enabling...", enabled: "Notifications enabled.",
+        test: "Send a test notification", testing: "Sending a test notification... lock the screen and wait a few seconds.", testSent: "Sent.",
+        liveOn: "Your location is shared with management while the app is open.", liveOff: "Location sharing is off. Location is recorded only when you press the buttons.",
+        liveStart: "Turn on location sharing", liveStop: "Turn off location sharing",
+        liveDenied: "Location permission denied. Enable it in browser settings.",
+        installIos: "In Safari tap Share, choose “Add to Home Screen”, then open the app from the icon.",
+        installReady: "Install the app on your Home Screen so notifications always reach you.",
+        installChrome: "In the Chrome menu (⋮) choose “Install app” or “Add to Home screen”.",
+        install: "Add to Home Screen",
+        logout: "Sign out", confirmLogout: "Sign out? You will need to enter your ID again.", loggedOut: "Signed out.",
+        e: { id_required: "Enter your Rider ID.", not_registered: "This ID is not registered. Contact management.", network: "Could not connect. Check your internet and try again.", offline: "No internet connection right now.", session: "Session expired. Please sign in again.", generic: "Something went wrong, try again.", no_order: "Register the order first.", unsupported: "This browser does not support notifications.", perm: "You must allow notifications for the app to work.", server: "The server is not ready for notifications. Contact management.", push_expired: "Subscription expired. Enable notifications again.", push_off: "Notifications are not enabled." },
+      },
       ar: {
         dir: "rtl", app: "متابعة المناديب",
+        perf: {"tab_orders": "الأوردرات", "tab_perf": "أدائي", "none": "لم يتم العثور على سجل أداء لرقمك حتى الآن.", "rider": "مندوب", "idl": "رقم المندوب", "seg": "السيجمنت", "overview": "📊 نظرة عامة على الأداء", "orders": "إجمالي الطلبات", "in_time": "الطلبات الموصلة في الوقت", "late": "الطلبات المتأخرة", "acceptance": "نسبة القبول", "on_time": "التوصيل في الوقت", "verification": "التحقق", "fail": "الطلبات الفاشلة", "final": "درجة الجودة النهائية", "footer": "الأداء مبني على آخر تقرير تم رفعه.", "ch": {"up": "⬆️ أحسنت! ارتفع الـ Segment الخاص بك", "down": "⬇️ انخفض الـ Segment الخاص بك", "same": "➡️ الـ Segment الخاص بك لم يتغير", "prev": "الـ Segment السابق", "reason": "السبب: هذه المؤشرات أقل من المطلوب:", "target": "المطلوب", "was": "كان", "generic": "انخفضت جودة التوصيل الإجمالية مقارنة بالمرة السابقة. اتبع النصائح بالأسفل للتحسين.", "none": "لا يوجد Segment سابق مسجّل بعد."}, "tg": {"title": "🎯 التارجت اليومي", "ok": "✅ أنت ماشي على التارجت", "warn": "⚠️ تنبيه: أنت أقل من التارجت", "yours": "طلباتك", "required": "المطلوب لحد دلوقتي", "missing": "ناقصك", "line": "التارجت {t} طلب/يوم × {d} يوم = {e} طلب"}},
         loginTitle: "تسجيل الدخول", loginSub: "أدخل رقمك مرة واحدة وسيتذكّرك الجهاز.",
         idLabel: "رقم المندوب", login: "دخول", checking: "جارٍ التحقق...",
         hello: "أهلاً", hello_name: "أهلاً {n}", loading: "جارٍ التحميل...",
@@ -279,6 +379,7 @@
       },
       ur: {
         dir: "rtl", app: "رائیڈر ٹریکنگ",
+        perf: {"tab_orders": "آرڈرز", "tab_perf": "میری کارکردگی", "none": "آپ کی آئی ڈی کا کارکردگی ریکارڈ ابھی تک نہیں ملا۔", "rider": "رائیڈر", "idl": "رائیڈر آئی ڈی", "seg": "سیگمنٹ", "overview": "📊 کارکردگی کا جائزہ", "orders": "کل آرڈرز", "in_time": "بروقت ڈیلیور ہونے والے آرڈرز", "late": "تاخیر سے آرڈرز", "acceptance": "قبولیت کی شرح", "on_time": "بروقت ڈیلیوری", "verification": "تصدیق", "fail": "ناکام آرڈرز", "final": "حتمی معیار اسکور", "footer": "کارکردگی آخری اپ لوڈ کی گئی رپورٹ پر مبنی ہے۔", "ch": {"up": "⬆️ شاباش! آپ کا سیگمنٹ بڑھ گیا ہے", "down": "⬇️ آپ کا سیگمنٹ کم ہو گیا ہے", "same": "➡️ آپ کا سیگمنٹ وہی رہا", "prev": "پچھلا سیگمنٹ", "reason": "وجہ: یہ اشاریے مطلوبہ ہدف سے کم ہیں:", "target": "ہدف", "was": "پہلے", "generic": "پچھلی بار کے مقابلے میں آپ کی مجموعی ڈیلیوری کوالٹی کم ہوئی ہے۔ بہتری کے لیے نیچے دی گئی ہدایات پر عمل کریں۔", "none": "ابھی تک کوئی پچھلا سیگمنٹ ریکارڈ نہیں ہے۔"}, "tg": {"title": "🎯 یومیہ ٹارگٹ", "ok": "✅ آپ ٹارگٹ پر ہیں", "warn": "⚠️ انتباہ: آپ ٹارگٹ سے پیچھے ہیں", "yours": "آپ کے آرڈرز", "required": "اب تک مطلوب", "missing": "کم ہیں", "line": "ٹارگٹ {t} آرڈر/دن × {d} دن = {e} آرڈرز"}},
         loginTitle: "لاگ اِن", loginSub: "اپنا نمبر ایک بار درج کریں، ڈیوائس یاد رکھے گی۔",
         idLabel: "رائیڈر نمبر", login: "داخل ہوں", checking: "تصدیق ہو رہی ہے...",
         hello: "خوش آمدید", hello_name: "خوش آمدید {n}", loading: "لوڈ ہو رہا ہے...",
@@ -315,6 +416,7 @@
       },
       bn: {
         dir: "ltr", app: "রাইডার ট্র্যাকিং",
+        perf: {"tab_orders": "অর্ডার", "tab_perf": "আমার পারফরম্যান্স", "none": "আপনার আইডির কোনো পারফরম্যান্স রেকর্ড এখনো পাওয়া যায়নি।", "rider": "রাইডার", "idl": "রাইডার আইডি", "seg": "সেগমেন্ট", "overview": "📊 পারফরম্যান্স ওভারভিউ", "orders": "মোট অর্ডার", "in_time": "সময়মতো ডেলিভারি হওয়া অর্ডার", "late": "দেরিতে ডেলিভারি হওয়া অর্ডার", "acceptance": "অ্যাক্সেপ্টেন্স রেট", "on_time": "সময়মতো ডেলিভারি", "verification": "ভেরিফিকেশন", "fail": "ফেইল অর্ডার", "final": "ফাইনাল কোয়ালিটি স্কোর", "footer": "সর্বশেষ আপলোড করা রিপোর্টের ভিত্তিতে পারফরম্যান্স দেখানো হয়েছে।", "ch": {"up": "⬆️ দারুণ! আপনার সেগমেন্ট বেড়েছে", "down": "⬇️ আপনার সেগমেন্ট কমেছে", "same": "➡️ আপনার সেগমেন্ট একই আছে", "prev": "আগের সেগমেন্ট", "reason": "কারণ: এই মেট্রিকগুলো লক্ষ্যমাত্রার চেয়ে কম:", "target": "লক্ষ্য", "was": "আগে ছিল", "generic": "আগের বারের তুলনায় আপনার সামগ্রিক ডেলিভারি কোয়ালিটি কমেছে। উন্নতির জন্য নিচের টিপসগুলো অনুসরণ করুন।", "none": "এখনো কোনো আগের সেগমেন্ট রেকর্ড করা নেই।"}, "tg": {"title": "🎯 দৈনিক টার্গেট", "ok": "✅ আপনি টার্গেটের পথে আছেন", "warn": "⚠️ সতর্কতা: আপনি টার্গেটের চেয়ে পিছিয়ে আছেন", "yours": "আপনার অর্ডার", "required": "এখন পর্যন্ত প্রয়োজন", "missing": "আপনার ঘাটতি", "line": "টার্গেট {t} অর্ডার/দিন × {d} দিন = {e} অর্ডার"}},
         loginTitle: "লগইন", loginSub: "একবার আপনার নম্বর দিন, ডিভাইস মনে রাখবে।",
         idLabel: "রাইডার নম্বর", login: "প্রবেশ করুন", checking: "যাচাই করা হচ্ছে...",
         hello: "স্বাগতম", hello_name: "স্বাগতম {n}", loading: "লোড হচ্ছে...",
@@ -350,7 +452,7 @@
         e: { id_required: "রাইডার নম্বর দিন।", not_registered: "এই নম্বর নিবন্ধিত নয়। ম্যানেজমেন্টের সাথে যোগাযোগ করুন।", network: "সংযোগ করা যায়নি। ইন্টারনেট দেখে আবার চেষ্টা করুন।", offline: "এখন ইন্টারনেট নেই।", session: "সেশন শেষ। আবার লগইন করুন।", generic: "ত্রুটি হয়েছে, আবার চেষ্টা করুন।", no_order: "আগে অর্ডার নথিভুক্ত করুন।", unsupported: "এই ব্রাউজার নোটিফিকেশন সমর্থন করে না।", perm: "অ্যাপ চালাতে নোটিফিকেশনের অনুমতি দিতে হবে।", server: "সার্ভার নোটিফিকেশনের জন্য প্রস্তুত নয়। ম্যানেজমেন্টের সাথে যোগাযোগ করুন।", push_expired: "সাবস্ক্রিপশন শেষ। নোটিফিকেশন আবার চালু করুন।", push_off: "নোটিফিকেশন চালু নেই।" },
       },
     };
-    const LANGS = ["ar", "ur", "bn"];
+    const LANGS = ["ar", "ur", "bn", "en"];
 
     /* ===================== Helpers ===================== */
     const $ = (id) => document.getElementById(id);
@@ -369,6 +471,7 @@
       const n = (navigator.language || "").toLowerCase();
       if (n.startsWith("ur")) return "ur";
       if (n.startsWith("bn")) return "bn";
+      if (n.startsWith("en")) return "en";
       return "ar";
     }
     let lang = detectLang();
@@ -413,6 +516,8 @@
       $("installBtn").textContent = t.install;
       $("logoutBtn").textContent = t.logout;
       $("stickyText").textContent = t.sticky;
+      $("tabOrders").textContent = t.perf.tab_orders;
+      $("tabPerf").textContent = t.perf.tab_perf;
       if (rider) {
         $("hello").textContent = rider.name && rider.name !== rider.id ? t.hello_name.replace("{n}", rider.name) : t.hello;
         $("riderTag").textContent = "#" + rider.id;
@@ -421,6 +526,7 @@
       renderLive();
       renderInstall();
       setPushUI(pushOn);
+      if (perfData) renderPerf();
     }
 
     document.querySelectorAll(".langs button").forEach((b) =>
@@ -456,6 +562,7 @@
 
     /* ===================== Order state ===================== */
     const STAGES = ["declared", "arrived", "picked_up", "delivered"];
+    let curTab = "orders";
     let busy = false;
 
     function mkBtn(action, label, cls) {
@@ -528,8 +635,9 @@
         if (p && (p.type === "picked_up" || p.type === "delivered")) actions.append(mkBtn("not_yet", t.act.not_yet, "quiet"));
         actions.append(mkBtn("cancel", t.act.cancel, "danger"));
       }
-      $("dock").classList.toggle("hidden", $("homeView").classList.contains("hidden"));
-      document.body.classList.toggle("no-dock", $("homeView").classList.contains("hidden"));
+      const noDock = $("homeView").classList.contains("hidden") || curTab !== "orders";
+      $("dock").classList.toggle("hidden", noDock);
+      document.body.classList.toggle("no-dock", noDock);
       if (busy) document.querySelectorAll("#actions button").forEach((b) => (b.disabled = true));
     }
 
@@ -650,6 +758,8 @@
         }
       } catch {}
       rider = null;
+      perfData = null;
+      setTab("orders");
       last = { order: null, prompt: null };
       showLogin();
       msg(T().loggedOut);
@@ -770,6 +880,108 @@
       deferredInstall = null;
       renderInstall();
     });
+
+
+    /* ===================== Performance tab ===================== */
+    let perfData = null;
+    const SEG_COLOR = { A: "#16a34a", B: "#2563eb", C: "#f59e0b", D: "#f97316", E: "#ef4444", F: "#7f1d1d" };
+    const SEG_ORDER = "ABCDEF";
+    const TARGETS = [["verification_rate", "prev_verification", 100, "verification"], ["fail_rate", "prev_fail", 100, "fail"], ["on_time_rate", "prev_on_time", 98, "on_time"]];
+    const esc = (x) => String(x ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    const pct2 = (v) => (v == null || !isFinite(Number(v)) ? "—" : Number(v).toFixed(2) + "%");
+    const int0 = (v) => (v == null || !isFinite(Number(v)) ? "—" : Number(v).toLocaleString("en-US"));
+    const numOrNull = (v) => (v == null || v === "" || !isFinite(Number(v)) ? null : Number(v));
+
+    function setTab(tab) {
+      curTab = tab;
+      $("ordersPane").classList.toggle("hidden", tab !== "orders");
+      $("perfPane").classList.toggle("hidden", tab !== "perf");
+      $("tabOrders").setAttribute("aria-selected", String(tab === "orders"));
+      $("tabPerf").setAttribute("aria-selected", String(tab === "perf"));
+      render(last);
+      if (tab === "perf") { renderPerf(); loadPerf(); }
+      window.scrollTo(0, 0);
+    }
+    $("tabOrders").addEventListener("click", () => setTab("orders"));
+    $("tabPerf").addEventListener("click", () => setTab("perf"));
+
+    async function loadPerf() {
+      try {
+        const { status, body } = await post("/api/performance", { token: getToken() });
+        if (status === 401) { store.del("riderToken"); showLogin(); return msg(errText("session")); }
+        if (body.ok) { perfData = body; renderPerf(); }
+      } catch {
+        if (!perfData) msg(errText("offline"));
+      }
+    }
+
+    function changeCard(d, seg, P) {
+      const C = P.ch;
+      const prev = String(d.prev_segment ?? "").trim();
+      if (!prev || ["nan", "none", "—"].includes(prev.toLowerCase())) return `<div class="change none">${esc(C.none)}</div>`;
+      const cur = seg.toUpperCase(), pv = prev.toUpperCase();
+      let dir = "same";
+      if (cur !== pv && SEG_ORDER.includes(cur) && SEG_ORDER.includes(pv)) dir = SEG_ORDER.indexOf(cur) < SEG_ORDER.indexOf(pv) ? "up" : "down";
+      let why = "";
+      if (dir === "down") {
+        let items = "";
+        for (const [ck, pk, target, lk] of TARGETS) {
+          const val = numOrNull(d[ck]);
+          if (val !== null && val < target - 1e-9) {
+            const old = numOrNull(d[pk]);
+            items += `<li><strong>${esc(P[lk])}</strong>: ${pct2(val)} (${esc(C.target)} ${target}%)${old !== null ? ` — ${esc(C.was)} ${pct2(old)}` : ""}</li>`;
+          }
+        }
+        why = items ? `<div class="why">${esc(C.reason)}<ul>${items}</ul></div>` : `<div class="why">${esc(C.generic)}</div>`;
+      }
+      const big = dir === "same" ? esc(seg) : `${esc(prev)} → ${esc(seg)}`;
+      return `<div class="change ${dir}"><div class="t">${esc(C[dir])}</div><div class="big">${big}</div><div class="s">${esc(C.prev)}: ${esc(prev)}</div>${why}</div>`;
+    }
+
+    function targetCard(d, P) {
+      const t = parseInt(d.target_per_day) || 0, days = parseInt(d.days_covered) || 0, orders = parseInt(d.orders) || 0;
+      if (t <= 0 || days <= 0) return "";
+      const G = P.tg, expected = t * days, missing = Math.max(expected - orders, 0), ok = missing === 0;
+      const stats = [[G.yours, orders.toLocaleString("en-US")], [G.required, expected.toLocaleString("en-US")]];
+      if (!ok) stats.push([G.missing, missing.toLocaleString("en-US")]);
+      return `<div class="target ${ok ? "ok" : "bad"}"><div class="tt">${esc(G.title)}</div><div class="st">${esc(ok ? G.ok : G.warn)}</div>
+        <div class="tgrid">${stats.map(([l, v], i) => `<div><b${!ok && i === 2 ? ' style="color:var(--red)"' : ""}>${v}</b><small>${esc(l)}</small></div>`).join("")}</div>
+        <div class="ln">${esc(G.line.replace("{t}", t).replace("{d}", days).replace("{e}", expected.toLocaleString("en-US")))}</div></div>`;
+    }
+
+    function tipsCard(K, P) {
+      if (!K) return "";
+      const goals = [[P.verification, "100%"], [P.fail, "100%"], [P.on_time, "98%"]];
+      const steps = (K.steps || []).map(([title, lines], i) => {
+        const body = (lines || []).map((l) => l.startsWith(">") ? `<div class="quote">${esc(l.slice(1).trim())}</div>` : `<div class="ln">${esc(l)}</div>`).join("");
+        return `<div class="tstep"><div class="no">${i + 1}</div><div><div class="h">${esc(title)}</div>${body}</div></div>`;
+      }).join("");
+      const img = perfData && perfData.image ? `<img class="tipimg" src="/api/tips-image?v=${perfData.imgv || 1}" alt=""><div class="tipcap">${esc(K.img)}</div>` : "";
+      return `<div class="tips"><div class="tt">💡 ${esc(K.title)}</div><div>${esc(K.intro)}</div>
+        <div class="goals">${goals.map(([l, v]) => `<div class="goal"><b>${v}</b><small>${esc(l)}</small></div>`).join("")}</div>
+        <div class="tnote">${esc(K.note)}</div><div class="sect" style="margin-top:6px">${esc(K.howto)}</div>${steps}
+        <div class="avoid"><strong>🚫 ${esc(K.avoid_title)}</strong><br>${esc(K.avoid)}</div>
+        <div class="closing">${esc(K.closing)}</div>${img}</div>`;
+    }
+
+    function renderPerf() {
+      const pane = $("perfPane"), P = T().perf;
+      if (!perfData) { pane.innerHTML = `<div class="empty">${esc(T().loading)}</div>`; return; }
+      const d = perfData.perf;
+      if (!d) { pane.innerHTML = `<div class="empty">${esc(P.none)}</div>`; return; }
+      let seg = String(d.segment ?? "").trim();
+      if (!seg || ["nan", "none"].includes(seg.toLowerCase())) seg = "—";
+      const color = SEG_COLOR[seg.toUpperCase()] || "#64748b";
+      const name = (d.rider_name || "").trim() || P.rider;
+      const cards = [[P.orders, int0(d.orders)], [P.in_time, int0(d.orders_in_time)], [P.late, int0(d.late_orders)], [P.acceptance, pct2(d.acceptance_rate)],
+        [P.on_time, pct2(d.on_time_rate)], [P.verification, pct2(d.verification_rate)], [P.fail, pct2(d.fail_rate)], [P.final, pct2(d.final_score)], [P.seg, seg, color]];
+      pane.innerHTML =
+        `<div class="profile"><div class="nm">${esc(name)}</div><div class="pid">${esc(P.idl)}: ${esc(d.rider_id)}</div>
+          <div class="sl">${esc(P.seg)}</div><div class="segpill" style="background:${color}">${esc(seg)}</div></div>` +
+        changeCard(d, seg, P) + targetCard(d, P) +
+        `<div class="sect">${esc(P.overview)}</div><div class="mgrid">${cards.map(([l, v, c]) => `<div class="metric"><div class="l">${esc(l)}</div><div class="v"${c ? ` style="color:${c}"` : ""}>${esc(v)}</div></div>`).join("")}</div>` +
+        tipsCard((perfData.tips || {})[lang], P) + `<div class="foot">${esc(P.footer)}</div>`;
+    }
 
     /* ===================== Start ===================== */
     // Buttons on the notification open the app with ?do=action (or the worker posts a message)
