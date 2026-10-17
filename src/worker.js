@@ -89,8 +89,32 @@ function workElapsedToday(tz, c) {
 }
 
 /* ---------------------------- Notification texts (ar / ur / bn) ---------------------------- */
-const LANGS = ["ar", "ur", "bn"];
+const LANGS = ["ar", "ur", "bn", "en"];
 const NOTICE = {
+  en: {
+    dir: "ltr",
+    order_title: "Order in progress",
+    open_app: "Open the app to answer.",
+    stage: {
+      declared: "On the way to the restaurant",
+      arrived: "At the restaurant, waiting for the order",
+      picked_up: "Order picked up, heading to the customer",
+    },
+    ask: {
+      have_order: "Do you have an order now?",
+      picked_up: "Did you pick up the order?",
+      delivered: "Did you deliver the order?",
+    },
+    act: {
+      have_order: "Yes, I have an order",
+      no_order: "No",
+      arrived: "Arrived at restaurant",
+      picked_up: "Picked up",
+      delivered: "Delivered",
+    },
+    app: "Rider Tracking",
+    uptodate: "Nothing new",
+  },
   ar: {
     dir: "rtl",
     order_title: "طلب قيد التنفيذ",
@@ -942,6 +966,222 @@ async function adminAddRiders(env, body, now) {
   return { ok: true, added, existing: stmts.length - added, invalid };
 }
 
+
+/* ---------------------------- Performance module ---------------------------- */
+const DEFAULT_TIPS = {
+  en: {
+    title: "How to improve your Segment",
+    intro: "To improve your performance and raise your Segment, focus on these 3 metrics:",
+    note: "Most riders struggle with On-Time, and everyone must improve it.",
+    howto: "How to improve On-Time",
+    steps: [
+      ["At the restaurant", [
+        "When you arrive at the restaurant, open the in-app chat between you and the customer and send:",
+        "> Hello sir, I'm at the restaurant and the order is not ready",
+        "Even if the order is ready, you must tell the customer it is not ready.",
+      ]],
+      ["After picking up the order", [
+        "Take a photo of the order and send it to the customer.",
+        "Take a screenshot of the distance between you and the customer and send it to them.",
+        "If you face any traffic on the way, quickly take a photo and send it to the customer.",
+        "If traffic happens repeatedly, take a photo and send it every time.",
+      ]],
+      ["When you reach the customer", [
+        "In the chat, send the customer: I'm here",
+        "Send a photo of the building.",
+        "Call the customer.",
+      ]],
+    ],
+    avoid_title: "Avoid this",
+    avoid: "Talking to the customer on WhatsApp is strictly forbidden.",
+    closing: "Follow the instructions above to improve your performance and your salary.",
+    img: "Example of the messages to send in the chat",
+  },
+  ar: {
+    title: "كيف ترفع الـ Segment الخاص بك",
+    intro: "لتحسين أدائك ورفع الـ Segment لازم تركز على 3 نقاط:",
+    note: "أغلب المناديب بيواجهوا مشكلة في الأون تايم، ولازم الجميع يحسّنه.",
+    howto: "كيفية تحسين الأون تايم",
+    steps: [
+      ["عند الوصول للمطعم", [
+        "عند وصولك إلى المطعم افتح الشات الموجود في التطبيق بينك وبين العميل وأرسل له:",
+        "> هالو سير، أنا في المطعم والطلب غير جاهز",
+        "حتى لو الأوردر جاهز، يجب أن ترسل له أنه غير جاهز.",
+      ]],
+      ["بعد استلام الطلب", [
+        "التقط صورة للأوردر وأرسلها للعميل.",
+        "التقط لقطة شاشة للمسافة بينك وبين العميل وأرسلها له.",
+        "إذا واجهت أي ازدحام في الطريق، التقط صورة بسرعة وأرسلها للعميل.",
+        "وإذا تكرر الازدحام، التقط صورة وأرسلها في كل مرة.",
+      ]],
+      ["عند الوصول للعميل", [
+        "أرسل له في الشات: أنا هنا",
+        "أرسل له صورة المبنى.",
+        "واتصل به اتصالًا.",
+      ]],
+    ],
+    avoid_title: "تجنب هذا",
+    avoid: "يمنع منعًا باتًا التحدث مع العميل على واتساب.",
+    closing: "اتبع التعليمات السابقة لتحسين أدائك وتحسين راتبك.",
+    img: "مثال على الرسائل التي ترسلها في الشات",
+  },
+  ur: {
+    title: "اپنا سیگمنٹ کیسے بہتر کریں",
+    intro: "اپنی کارکردگی بہتر بنانے اور سیگمنٹ بڑھانے کے لیے ان 3 نکات پر توجہ دیں:",
+    note: "اکثر رائیڈرز کو بروقت ڈیلیوری میں مسئلہ ہوتا ہے، اور سب کو اسے بہتر کرنا ہوگا۔",
+    howto: "بروقت ڈیلیوری کیسے بہتر کریں",
+    steps: [
+      ["ریسٹورنٹ پہنچنے پر", [
+        "ریسٹورنٹ پہنچتے ہی ایپ میں اپنے اور کسٹمر کے درمیان چیٹ کھولیں اور بھیجیں:",
+        "> ہیلو سر، میں ریسٹورنٹ میں ہوں اور آرڈر تیار نہیں ہے",
+        "چاہے آرڈر تیار ہو، پھر بھی کسٹمر کو بتانا ضروری ہے کہ آرڈر تیار نہیں ہے۔",
+      ]],
+      ["آرڈر لینے کے بعد", [
+        "آرڈر کی تصویر لے کر کسٹمر کو بھیجیں۔",
+        "اپنے اور کسٹمر کے درمیان فاصلے کا اسکرین شاٹ لے کر انہیں بھیجیں۔",
+        "اگر راستے میں ٹریفک ہو تو فوراً تصویر لے کر کسٹمر کو بھیجیں۔",
+        "اگر بار بار ٹریفک ہو تو ہر بار تصویر لے کر بھیجیں۔",
+      ]],
+      ["کسٹمر کے پاس پہنچ کر", [
+        "چیٹ میں کسٹمر کو لکھیں: میں یہاں ہوں",
+        "عمارت کی تصویر بھیجیں۔",
+        "اور کسٹمر کو کال کریں۔",
+      ]],
+    ],
+    avoid_title: "اس سے بچیں",
+    avoid: "کسٹمر سے واٹس ایپ پر بات کرنا سختی سے منع ہے۔",
+    closing: "اپنی کارکردگی اور تنخواہ بہتر بنانے کے لیے اوپر دی گئی ہدایات پر عمل کریں۔",
+    img: "چیٹ میں بھیجے جانے والے پیغامات کی مثال",
+  },
+  bn: {
+    title: "আপনার সেগমেন্ট কীভাবে উন্নত করবেন",
+    intro: "পারফরম্যান্স ভালো করতে এবং সেগমেন্ট বাড়াতে এই ৩টি বিষয়ে মনোযোগ দিন:",
+    note: "বেশিরভাগ রাইডারের সময়মতো ডেলিভারিতে সমস্যা হয়, এবং সবাইকে এটি উন্নত করতে হবে।",
+    howto: "সময়মতো ডেলিভারি কীভাবে উন্নত করবেন",
+    steps: [
+      ["রেস্টুরেন্টে পৌঁছে", [
+        "রেস্টুরেন্টে পৌঁছে অ্যাপে আপনার ও কাস্টমারের চ্যাট খুলুন এবং পাঠান:",
+        "> হ্যালো স্যার, আমি রেস্টুরেন্টে আছি এবং অর্ডার এখনো প্রস্তুত নয়",
+        "অর্ডার প্রস্তুত থাকলেও কাস্টমারকে জানাতে হবে যে এটি প্রস্তুত নয়।",
+      ]],
+      ["অর্ডার নেওয়ার পর", [
+        "অর্ডারের ছবি তুলে কাস্টমারকে পাঠান।",
+        "আপনার ও কাস্টমারের মধ্যে দূরত্বের স্ক্রিনশট নিয়ে তাকে পাঠান।",
+        "রাস্তায় যানজট হলে দ্রুত একটি ছবি তুলে কাস্টমারকে পাঠান।",
+        "বারবার যানজট হলে প্রতিবার ছবি তুলে পাঠান।",
+      ]],
+      ["কাস্টমারের কাছে পৌঁছে", [
+        "চ্যাটে কাস্টমারকে লিখুন: আমি এখানে আছি",
+        "ভবনের ছবি পাঠান।",
+        "এবং কাস্টমারকে ফোন করুন।",
+      ]],
+    ],
+    avoid_title: "এটি এড়িয়ে চলুন",
+    avoid: "কাস্টমারের সাথে হোয়াটসঅ্যাপে কথা বলা কঠোরভাবে নিষিদ্ধ।",
+    closing: "পারফরম্যান্স ও বেতন উন্নত করতে উপরের নির্দেশনাগুলো অনুসরণ করুন।",
+    img: "চ্যাটে পাঠানোর মেসেজের উদাহরণ",
+  },
+};
+
+const TIP_TEXT_KEYS = ["title", "intro", "note", "howto", "avoid_title", "avoid", "closing", "img"];
+
+// accept only a well-formed tips object (this is edited from the admin page)
+function cleanTip(t) {
+  if (!t || typeof t !== "object") return null;
+  const out = {};
+  for (const k of TIP_TEXT_KEYS) out[k] = String(t[k] ?? "").slice(0, 600);
+  const steps = Array.isArray(t.steps) ? t.steps.slice(0, 12) : [];
+  out.steps = steps
+    .map((st) => {
+      if (!Array.isArray(st) || st.length < 2) return null;
+      const lines = (Array.isArray(st[1]) ? st[1] : []).slice(0, 20).map((l) => String(l).slice(0, 400)).filter((l) => l.trim());
+      return [String(st[0] ?? "").slice(0, 200), lines];
+    })
+    .filter((st) => st && (st[0].trim() || st[1].length));
+  return out;
+}
+
+async function getAllTips(env) {
+  const tips = JSON.parse(JSON.stringify(DEFAULT_TIPS));
+  const custom = {};
+  try {
+    const rows = await env.DB.prepare("SELECT key, value FROM settings WHERE key LIKE 'tips_%' AND key <> 'tips_image'").all();
+    for (const r of (rows && rows.results) || []) {
+      const l = r.key.slice(5);
+      if (!LANGS.includes(l)) continue;
+      try {
+        const t = cleanTip(JSON.parse(r.value));
+        if (t) { tips[l] = t; custom[l] = true; }
+      } catch { /* keep default */ }
+    }
+  } catch { /* settings table missing */ }
+  return { tips, custom };
+}
+
+async function hasTipsImage(env) {
+  try {
+    const r = await env.DB.prepare("SELECT length(value) AS n FROM settings WHERE key = 'tips_image'").first();
+    return !!(r && r.n);
+  } catch { return false; }
+}
+
+const PERF_INT = ["orders", "orders_in_time", "late_orders", "failed_orders"];
+const PERF_PCT = ["chat_rate", "acceptance_rate", "verification_rate", "on_time_rate", "fail_rate", "final_score"];
+const toNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+
+async function adminPerfUpload(env, body, now) {
+  const rows = Array.isArray(body && body.rows) ? body.rows.slice(0, 150) : [];
+  const tpd = Math.max(0, Math.min(1000, Math.round(toNum(body && body.target_per_day))));
+  const days = Math.max(0, Math.min(31, Math.round(toNum(body && body.days_covered))));
+  const pre = [];
+  if (body && body.first) {
+    // keep the last segment/indicators of each rider, then replace everything
+    pre.push(env.DB.prepare("DELETE FROM perf_prev"));
+    pre.push(env.DB.prepare(
+      `INSERT OR REPLACE INTO perf_prev (rider_id, segment, on_time, verification, fail, final)
+       SELECT rider_id, segment, on_time_rate, verification_rate, fail_rate, final_score FROM performance`));
+    pre.push(env.DB.prepare("DELETE FROM performance"));
+  }
+  const stmts = [];
+  let skipped = 0;
+  for (const r of rows) {
+    const id = String((r && r.rider_id) ?? "").trim().replace(/\.0$/, "");
+    if (!id || id.toLowerCase() === "nan" || id.length > 40) { skipped++; continue; }
+    const v = [id, String(r.rider_name ?? "").trim().slice(0, 80)];
+    for (const k of PERF_INT) v.push(Math.max(0, Math.round(toNum(r[k]))));
+    for (const k of PERF_PCT) v.push(toNum(r[k]));
+    v.push(String(r.segment ?? "—").trim().slice(0, 12) || "—");
+    stmts.push(
+      env.DB.prepare(
+        `INSERT OR REPLACE INTO performance
+         (rider_id, rider_name, orders, orders_in_time, late_orders, failed_orders,
+          chat_rate, acceptance_rate, verification_rate, on_time_rate, fail_rate, final_score, segment,
+          prev_segment, prev_on_time, prev_verification, prev_fail, prev_final,
+          target_per_day, days_covered, uploaded_at)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,
+           (SELECT segment FROM perf_prev WHERE rider_id = ?1), (SELECT on_time FROM perf_prev WHERE rider_id = ?1),
+           (SELECT verification FROM perf_prev WHERE rider_id = ?1), (SELECT fail FROM perf_prev WHERE rider_id = ?1),
+           (SELECT final FROM perf_prev WHERE rider_id = ?1), ?14, ?15, ?16)`
+      ).bind(...v, tpd, days, now)
+    );
+  }
+  const all = [...pre, ...stmts];
+  if (all.length) await env.DB.batch(all);
+  return { ok: true, inserted: stmts.length, skipped };
+}
+
+async function adminPerfList(env) {
+  const res = await env.DB.prepare("SELECT * FROM performance ORDER BY segment, rider_id").all();
+  const rows = (res && res.results) || [];
+  return {
+    ok: true,
+    rows,
+    meta: rows.length
+      ? { count: rows.length, uploaded_at: rows[0].uploaded_at, target_per_day: rows[0].target_per_day, days_covered: rows[0].days_covered }
+      : { count: 0 },
+  };
+}
+
 /* ---------------------------- Routes ---------------------------- */
 export default {
   async fetch(request, env) {
@@ -1013,6 +1253,28 @@ export default {
       if (!loc) return fail("bad_request", "Invalid location", 400);
       await upsertLocation(env, device.rider_id, loc, now).run();
       return json({ ok: true });
+    }
+
+    if (path === "/api/performance" && request.method === "POST") {
+      const body = await readBody(request);
+      if (!body) return json({ ok: false }, 400);
+      const device = await getDevice(env, body.token);
+      if (!device) return fail("unauthorized", "Unauthorized", 401);
+      let perf = null;
+      try {
+        perf = await env.DB.prepare("SELECT * FROM performance WHERE rider_id = ?").bind(device.rider_id).first();
+      } catch { /* table not created yet */ }
+      const { tips } = await getAllTips(env);
+      return json({ ok: true, perf: perf || null, tips, image: await hasTipsImage(env) });
+    }
+
+    if (path === "/api/tips-image" && request.method === "GET") {
+      let row = null;
+      try { row = await env.DB.prepare("SELECT value FROM settings WHERE key = 'tips_image'").first(); } catch {}
+      const m = row && /^data:(image\/(?:png|jpeg|webp));base64,(.+)$/.exec(row.value || "");
+      if (!m) return new Response("Not found", { status: 404 });
+      const bin = Uint8Array.from(atob(m[2]), (c) => c.charCodeAt(0));
+      return new Response(bin, { headers: { "Content-Type": m[1], "Cache-Control": "public, max-age=300" } });
     }
 
     /* ---- Notifications ---- */
@@ -1094,6 +1356,50 @@ export default {
       }
       if (path === "/api/admin/report" && request.method === "GET") {
         return json(await adminReport(env, url.searchParams.get("range") || "today", now));
+      }
+      if (path === "/api/admin/performance" && request.method === "GET") {
+        return json(await adminPerfList(env));
+      }
+      if (path === "/api/admin/performance/upload" && request.method === "POST") {
+        const body = await readBody(request);
+        if (!body) return json({ ok: false }, 400);
+        return json(await adminPerfUpload(env, body, now));
+      }
+      if (path === "/api/admin/tips" && request.method === "GET") {
+        const { tips, custom } = await getAllTips(env);
+        return json({ ok: true, tips, custom, defaults: DEFAULT_TIPS, image: await hasTipsImage(env) });
+      }
+      if (path === "/api/admin/tips" && request.method === "POST") {
+        const body = await readBody(request);
+        const lang = body && body.lang;
+        if (!LANGS.includes(lang)) return fail("bad_request", "Unsupported language", 400);
+        if (body.reset) {
+          await env.DB.prepare("DELETE FROM settings WHERE key = ?").bind("tips_" + lang).run();
+          return json({ ok: true });
+        }
+        const tip = cleanTip(body.tip);
+        if (!tip) return fail("bad_request", "Invalid tips", 400);
+        await env.DB
+          .prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+          .bind("tips_" + lang, JSON.stringify(tip))
+          .run();
+        return json({ ok: true });
+      }
+      if (path === "/api/admin/tips-image" && request.method === "POST") {
+        const body = await readBody(request);
+        if (body && body.remove) {
+          await env.DB.prepare("DELETE FROM settings WHERE key = 'tips_image'").run();
+          return json({ ok: true });
+        }
+        const data = String((body && body.dataUrl) || "");
+        if (!/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(data) || data.length > 1_200_000) {
+          return fail("bad_image", "Use a PNG/JPEG/WebP image under ~800 KB", 400);
+        }
+        await env.DB
+          .prepare("INSERT INTO settings (key, value) VALUES ('tips_image', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+          .bind(data)
+          .run();
+        return json({ ok: true });
       }
       if (path === "/api/admin/riders" && request.method === "GET") {
         return json(await adminListRiders(env));
