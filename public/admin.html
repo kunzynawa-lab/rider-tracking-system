@@ -172,6 +172,7 @@
         <button data-page="live" aria-current="page">📍 <span data-i="navLive"></span></button>
         <button data-page="reports">📊 <span data-i="navReports"></span></button>
         <button data-page="riders">👥 <span data-i="navRiders"></span></button>
+        <button data-page="performance">🏆 <span data-i="navPerf"></span></button>
       </nav>
       <div class="side-foot">
         <div class="seg" id="langSeg"><button data-lang="en" aria-pressed="true">EN</button><button data-lang="ar" aria-pressed="false">عربي</button></div>
@@ -241,6 +242,68 @@
         </div>
         <div class="card"><div class="scroll" style="max-height:none"><table><thead><tr id="mgHead"></tr></thead><tbody id="mgBody"></tbody></table></div></div>
       </section>
+      <section id="pg-performance" class="hidden">
+        <div class="head">
+          <div><h1 data-i="perfTitle"></h1><div class="sub" id="perfSub"></div></div>
+          <div class="chips" id="perfTabs"></div>
+        </div>
+
+        <div id="pt-upload">
+          <div class="card" style="padding:18px;margin-bottom:16px">
+            <p class="muted" style="margin:0 0 12px" data-i="perfWarn"></p>
+            <label class="btn ghost" style="display:inline-flex;cursor:pointer"><span data-i="chooseSheet"></span><input id="perfFile" type="file" accept=".xlsx,.xls,.csv" style="display:none"></label>
+            <span class="muted" id="perfFileInfo" style="margin-inline-start:10px"></span>
+            <div class="err" id="perfErr" role="alert"></div>
+          </div>
+          <div id="perfPreview" class="hidden">
+            <div class="card" style="padding:18px;margin-bottom:16px">
+              <h2 style="margin-bottom:10px" data-i="targetTitle"></h2>
+              <div style="display:flex;gap:12px;flex-wrap:wrap">
+                <label style="flex:1;min-width:160px"><span class="muted" data-i="tgtPerDay"></span><input id="tgtPerDay" type="number" min="1" value="17"></label>
+                <label style="flex:1;min-width:160px"><span class="muted" data-i="daysCovered"></span><input id="daysCovered" type="number" min="1" max="31" value="1"></label>
+              </div>
+              <p class="muted" id="tgtLine" style="margin:10px 0 0"></p>
+            </div>
+            <div class="card" style="margin-bottom:16px"><header><h2 data-i="previewT"></h2><span class="muted" id="segCounts"></span></header>
+              <div class="scroll" style="max-height:300px"><table><thead><tr id="prevHead"></tr></thead><tbody id="prevBody"></tbody></table></div></div>
+            <button class="btn" id="perfGo" data-i="replaceBtn"></button>
+            <span class="muted" id="perfProg" style="margin-inline-start:10px"></span>
+          </div>
+        </div>
+
+        <div id="pt-data" class="hidden">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+            <input id="pdSearch" style="max-width:260px" data-ph="searchPerf">
+            <select id="pdSeg" style="max-width:160px"></select>
+            <label style="display:flex;gap:6px;align-items:center"><input id="pdBelow" type="checkbox" style="width:auto"><span data-i="belowOnly"></span></label>
+            <button class="btn ghost sm" id="pdDownload" data-i="downloadXlsx"></button>
+            <span class="muted" id="pdCount"></span>
+          </div>
+          <div class="card"><div class="scroll" style="max-height:640px"><table><thead><tr id="pdHead"></tr></thead><tbody id="pdBody"></tbody></table></div></div>
+        </div>
+
+        <div id="pt-tips" class="hidden">
+          <div class="card" style="padding:18px;margin-bottom:16px">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+              <h2 data-i="tipsEdit"></h2>
+              <div class="chips" id="tipLangs"></div>
+              <span class="badge b-idle hidden" id="tipCustom" data-i="customized"></span>
+            </div>
+            <div id="tipForm" style="display:grid;gap:10px"></div>
+            <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+              <button class="btn" id="tipSave" data-i="saveTips"></button>
+              <button class="btn ghost" id="tipReset" data-i="resetTips"></button>
+            </div>
+          </div>
+          <div class="card" style="padding:18px">
+            <h2 style="margin-bottom:6px" data-i="imageTitle"></h2>
+            <p class="muted" style="margin:0 0 10px" data-i="imageHint"></p>
+            <img id="tipImgPrev" alt="" class="hidden" style="max-width:320px;width:100%;border-radius:12px;border:1px solid var(--line);margin-bottom:10px;display:block">
+            <label class="btn ghost" style="display:inline-flex;cursor:pointer"><span data-i="uploadImage"></span><input id="tipImgFile" type="file" accept="image/png,image/jpeg,image/webp" style="display:none"></label>
+            <button class="btn ghost" id="tipImgRemove" data-i="removeImage"></button>
+          </div>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -248,6 +311,8 @@
     <form method="dialog" id="addForm">
       <h2 style="font-size:18px;margin-bottom:6px" data-i="addRiders"></h2>
       <p class="muted" style="margin:0 0 12px" data-i="addHelp"></p>
+      <label class="btn ghost sm" style="display:inline-flex;align-items:center;margin-bottom:10px;cursor:pointer"><span data-i="uploadFile"></span><input id="addFile" type="file" accept=".csv,.txt,.tsv,.xlsx,.xls" style="display:none"></label>
+      <span class="muted" id="addCount" style="margin-inline-start:8px"></span>
       <textarea id="addText" rows="8" dir="ltr" placeholder="1001, Ahmed&#10;1002, Omar&#10;1003"></textarea>
       <div class="err" id="addErr" role="alert"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
@@ -263,6 +328,16 @@
     en: {
       dir: "ltr", brand: "Rider Tracking", gateTitle: "Admin sign-in", gateSub: "Enter the admin key to continue.", adminKey: "Admin key", signIn: "Sign in", signOut: "Sign out",
       navLive: "Live", navReports: "Reports", navRiders: "Riders",
+      navPerf: "Performance", perfTitle: "Rider performance", perfWarn: "Upload the performance sheet (Excel/CSV). Every new upload replaces all previous data; each rider's previous segment is kept for comparison. Riders see their own results in their app.",
+      chooseSheet: "Choose Excel / CSV", pt_upload: "Upload sheet", pt_data: "Current data", pt_tips: "Instructions & tips",
+      rowsLoaded: "{r} rows · {c} columns", missingCols: "The file is missing columns: ", previewT: "Preview", targetTitle: "Daily target settings", tgtPerDay: "Daily target (orders/day)", daysCovered: "Days covered by the sheet",
+      tgtLine: "Required so far from each rider = {t} × {d} = {e} orders", replaceBtn: "Delete old data & upload new", uploading: "Uploading {n} / {t}...", uploadedOk: "Done: {n} riders loaded ({s} skipped).", confirmReplace: "This will delete all previous performance data and replace it with this file. Continue?",
+      noPerf: "No performance data uploaded yet.", lastUpload: "Last upload: {t} · {n} riders", searchPerf: "Search by ID or name", belowOnly: "Below target only", allSegs: "All segments", downloadXlsx: "Download Excel", shown: "{n} shown",
+      tipsEdit: "Edit tips shown to riders", customized: "Customised", saveTips: "Save", resetTips: "Reset to default", tipsSaved: "Saved.", tipsReset: "Restored the default text.",
+      f_title: "Title", f_intro: "Intro", f_note: "Note", f_howto: "Section heading", f_avoid_title: "Warning title", f_avoid: "Warning text", f_closing: "Closing line", f_img: "Image caption",
+      f_steps: "Steps", f_stepsHelp: "Start each step with ## and its title, then one line per instruction. Start a line with > to show it as a message to copy.",
+      imageTitle: "Chat example image", imageHint: "Shown at the end of the tips for every rider (PNG/JPEG/WebP, up to ~800 KB).", uploadImage: "Upload image", removeImage: "Remove image", imgSaved: "Image saved.", imgRemoved: "Image removed.", imgBig: "Image is too large (max ~800 KB).",
+      colId: "ID", colName: "Name", colOrders: "Orders", colInTime: "In time", colLate: "Late", colFailed: "Failed", colChat: "Chat %", colAcc: "Acceptance", colOnTime: "On-time", colVer: "Verification", colFail: "Fail", colFinal: "Final", colSeg: "Segment", colTarget: "Missing vs target",
       liveTitle: "Live operations", updatedAt: "Updated {t}", idleBoard: "Idle riders", allRiders: "All riders", map: "Live map", activity: "Recent activity",
       riders: "riders", pins: "{n} on map", noPins: "No locations yet",
       k_total: "Active riders", k_order: "On an order", k_idle: "Idle now", k_deliv: "Delivered today", k_late: "No response", k_push: "Notifications off",
@@ -284,7 +359,7 @@
       l_id: "#", l_rider: "Rider", l_status: "Status", l_start: "Started", l_pick: "Pickup", l_end: "Delivered", l_dur: "Total",
       os_active: "Active", os_delivered: "Delivered", os_cancelled: "Cancelled", os_expired: "Expired",
       exportRiders: "Export riders CSV", exportOrders: "Export orders CSV", noData: "No data for this period.",
-      ridersTitle: "Riders", addRiders: "Add riders", addHelp: "One rider per line: ID, then name (optional). IDs may contain letters, digits, - and _.", search: "Search by ID or name", cancel: "Cancel", save: "Save",
+      ridersTitle: "Riders", addRiders: "Add riders", uploadFile: "Upload Excel / CSV", parsedN: "{n} riders ready", addHelp: "Upload an Excel/CSV file (column 1 = ID, column 2 = name), or paste from Excel, or type one rider per line: ID, then name (optional). Only riders added here can open the app.", search: "Search by ID or name", cancel: "Cancel", save: "Save",
       m_id: "ID", m_name: "Name", m_status: "Status", m_push: "Notifications", m_action: "", activeN: "{a} active · {t} total",
       deactivate: "Deactivate", activate: "Activate", inactive: "Inactive", active: "Active",
       added: "Added {a} · already existed {e}{i}", invalidN: " · invalid {n}", nothing: "Type at least one rider.",
@@ -294,6 +369,16 @@
     ar: {
       dir: "rtl", brand: "متابعة المناديب", gateTitle: "دخول الإدارة", gateSub: "أدخل مفتاح الإدارة للمتابعة.", adminKey: "مفتاح الإدارة", signIn: "دخول", signOut: "خروج",
       navLive: "المباشر", navReports: "التقارير", navRiders: "المناديب",
+      navPerf: "الأداء", perfTitle: "أداء المناديب", perfWarn: "ارفع شيت الأداء (Excel/CSV). أي رفع جديد يمسح كل البيانات السابقة، ويحتفظ بالـ Segment السابق لكل مندوب للمقارنة. يرى كل مندوب نتائجه في تطبيقه.",
+      chooseSheet: "اختر ملف Excel / CSV", pt_upload: "رفع الشيت", pt_data: "البيانات الحالية", pt_tips: "التعليمات والنصائح",
+      rowsLoaded: "{r} صف · {c} عمود", missingCols: "الملف ناقص أعمدة: ", previewT: "معاينة", targetTitle: "إعدادات التارجت اليومي", tgtPerDay: "التارجت اليومي (طلب/يوم)", daysCovered: "عدد الأيام التي يغطيها الشيت",
+      tgtLine: "المطلوب حتى الآن من كل مندوب = {t} × {d} = {e} طلب", replaceBtn: "مسح القديم ورفع الجديد", uploading: "جارٍ الرفع {n} / {t}...", uploadedOk: "تم: تحميل {n} مندوب (تم تخطي {s}).", confirmReplace: "سيتم مسح كل بيانات الأداء السابقة واستبدالها بهذا الملف. متابعة؟",
+      noPerf: "لم يتم رفع بيانات أداء بعد.", lastUpload: "آخر رفع: {t} · {n} مندوب", searchPerf: "بحث بالرقم أو الاسم", belowOnly: "الأقل من التارجت فقط", allSegs: "كل السيجمنت", downloadXlsx: "تحميل Excel", shown: "{n} معروض",
+      tipsEdit: "تعديل النصائح التي تظهر للمناديب", customized: "معدّل", saveTips: "حفظ", resetTips: "إعادة النص الافتراضي", tipsSaved: "تم الحفظ.", tipsReset: "تمت إعادة النص الافتراضي.",
+      f_title: "العنوان", f_intro: "المقدمة", f_note: "ملاحظة", f_howto: "عنوان القسم", f_avoid_title: "عنوان التحذير", f_avoid: "نص التحذير", f_closing: "الجملة الختامية", f_img: "تعليق الصورة",
+      f_steps: "الخطوات", f_stepsHelp: "ابدأ كل خطوة بـ ## ثم عنوانها، وبعدها سطر لكل تعليمة. ابدأ السطر بـ > ليظهر كرسالة للنسخ.",
+      imageTitle: "صورة مثال الشات", imageHint: "تظهر في نهاية النصائح لكل مندوب (PNG/JPEG/WebP حتى ~800 كيلوبايت).", uploadImage: "رفع صورة", removeImage: "حذف الصورة", imgSaved: "تم حفظ الصورة.", imgRemoved: "تم حذف الصورة.", imgBig: "الصورة كبيرة جداً (الحد ~800 كيلوبايت).",
+      colId: "الرقم", colName: "الاسم", colOrders: "الطلبات", colInTime: "في الوقت", colLate: "متأخرة", colFailed: "فاشلة", colChat: "Chat %", colAcc: "القبول", colOnTime: "On-time", colVer: "التحقق", colFail: "Fail", colFinal: "النهائي", colSeg: "السيجمنت", colTarget: "الناقص عن التارجت",
       liveTitle: "العمليات المباشرة", updatedAt: "آخر تحديث {t}", idleBoard: "المناديب الخاملون", allRiders: "كل المناديب", map: "الخريطة المباشرة", activity: "آخر النشاط",
       riders: "مندوب", pins: "{n} على الخريطة", noPins: "لا توجد مواقع بعد",
       k_total: "المناديب النشطون", k_order: "لديهم طلب", k_idle: "خاملون الآن", k_deliv: "تم تسليمها اليوم", k_late: "بدون رد", k_push: "الإشعارات متوقفة",
@@ -315,7 +400,7 @@
       l_id: "#", l_rider: "المندوب", l_status: "الحالة", l_start: "البداية", l_pick: "الاستلام", l_end: "التسليم", l_dur: "الإجمالي",
       os_active: "جارٍ", os_delivered: "تم التسليم", os_cancelled: "ملغى", os_expired: "منتهي",
       exportRiders: "تصدير المناديب CSV", exportOrders: "تصدير الطلبات CSV", noData: "لا توجد بيانات لهذه الفترة.",
-      ridersTitle: "المناديب", addRiders: "إضافة مناديب", addHelp: "مندوب في كل سطر: الرقم ثم الاسم (اختياري). يمكن أن يحتوي الرقم على حروف وأرقام و - و _.", search: "ابحث بالرقم أو الاسم", cancel: "إلغاء", save: "حفظ",
+      ridersTitle: "المناديب", addRiders: "إضافة مناديب", uploadFile: "رفع ملف Excel / CSV", parsedN: "{n} مندوب جاهز", addHelp: "ارفع ملف Excel/CSV (العمود الأول = الرقم، الثاني = الاسم)، أو الصق من Excel، أو اكتب مندوباً في كل سطر. فقط المناديب المضافون هنا يستطيعون فتح التطبيق.", search: "ابحث بالرقم أو الاسم", cancel: "إلغاء", save: "حفظ",
       m_id: "الرقم", m_name: "الاسم", m_status: "الحالة", m_push: "الإشعارات", m_action: "", activeN: "{a} نشط · {t} إجمالي",
       deactivate: "إيقاف", activate: "تفعيل", inactive: "متوقف", active: "نشط",
       added: "تمت إضافة {a} · موجود مسبقاً {e}{i}", invalidN: " · غير صالح {n}", nothing: "اكتب مندوباً واحداً على الأقل.",
@@ -354,6 +439,7 @@
   const pct = (x) => (x == null ? "–" : Math.round(x * 100) + "%");
 
   function toast(text) {
+    document.querySelectorAll(".toast").forEach((x) => x.remove());
     const d = document.createElement("div");
     d.className = "toast"; d.textContent = text; document.body.append(d);
     setTimeout(() => d.remove(), 3500);
@@ -386,11 +472,12 @@
 
   function go(p) {
     page = p;
-    ["live", "reports", "riders"].forEach((x) => $("pg-" + x).classList.toggle("hidden", x !== p));
+    ["live", "reports", "riders", "performance"].forEach((x) => $("pg-" + x).classList.toggle("hidden", x !== p));
     document.querySelectorAll("#nav button").forEach((b) => (b.dataset.page === p ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current")));
     if (p === "live") { loadLive(); setTimeout(() => map && map.invalidateSize(), 50); }
     if (p === "reports") loadReport();
     if (p === "riders") loadRiders();
+    if (p === "performance") initPerf();
   }
   document.querySelectorAll("#nav button").forEach((b) => b.addEventListener("click", () => go(b.dataset.page)));
 
@@ -689,6 +776,44 @@
 
   $("addBtn").addEventListener("click", () => { $("addErr").textContent = ""; $("addDlg").showModal(); $("addText").focus(); });
   $("addCancel").addEventListener("click", () => $("addDlg").close());
+  const HEADER = /^(id|rider.?id|rider|number|no\.?|#|name|\u0631\u0642\u0645.*|\u0627\u0644\u0631\u0642\u0645|\u0627\u0644\u0645\u0646\u062f\u0648\u0628)$/i;
+  function rowsToText(rows) {
+    const out = [];
+    rows.forEach((r, i) => {
+      const id = String(r[0] ?? "").replace(/[\u200b-\u200f\u202a-\u202e\ufeff]/g, "").trim();
+      if (!id) return;
+      if (i === 0 && HEADER.test(id)) return;
+      out.push(id + ", " + String(r[1] ?? "").trim());
+    });
+    return out.join("\n");
+  }
+  function loadScript(src) {
+    return new Promise((ok, no) => { const sc = document.createElement("script"); sc.src = src; sc.onload = ok; sc.onerror = no; document.head.append(sc); });
+  }
+  $("addFile").addEventListener("change", async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    $("addErr").textContent = "";
+    try {
+      let rows;
+      if (/\.(xlsx|xls)$/i.test(f.name)) {
+        if (typeof XLSX === "undefined") await loadScript("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js");
+        const wb = XLSX.read(await f.arrayBuffer(), { type: "array" });
+        rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, defval: "" });
+      } else {
+        const txt = (await f.text()).replace(/^\ufeff/, "");
+        rows = txt.split(/\r?\n/).filter(Boolean).map((l) => l.split(/[,;\t]/).map((x) => x.replace(/^"|"$/g, "")));
+      }
+      const text = rowsToText(rows);
+      $("addText").value = text;
+      $("addCount").textContent = T("parsedN", { n: text ? text.split("\n").length : 0 });
+    } catch (err) {
+      $("addErr").textContent = T("e_generic");
+    }
+    e.target.value = "";
+  });
+  $("addText").addEventListener("input", () => { $("addCount").textContent = ""; });
+
   $("addForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const riders = $("addText").value.split(/\r?\n/).map((l) => l.replace(/[\u200e\u200f\u202a-\u202e\ufeff]/g, "").trim()).filter(Boolean).map((l) => {
@@ -698,15 +823,256 @@
     if (!riders.length) { $("addErr").textContent = T("nothing"); return; }
     $("addSave").disabled = true;
     try {
-      const r = await api("/api/admin/riders", { method: "POST", body: JSON.stringify({ riders }) });
+      const r = { added: 0, existing: 0, invalid: 0 };
+      for (let i = 0; i < riders.length; i += 200) {
+        const part = await api("/api/admin/riders", { method: "POST", body: JSON.stringify({ riders: riders.slice(i, i + 200) }) });
+        r.added += part.added; r.existing += part.existing; r.invalid += part.invalid;
+      }
       $("addDlg").close();
-      $("addText").value = "";
+      $("addText").value = ""; $("addCount").textContent = "";
       toast(T("added", { a: r.added, e: r.existing, i: r.invalid ? T("invalidN", { n: r.invalid }) : "" }));
       loadRiders();
     } catch (err) {
       if (err.code === "key" || err.code === "missing") { $("addDlg").close(); handleErr(err); }
       else $("addErr").textContent = err.message;
     } finally { $("addSave").disabled = false; }
+  });
+
+
+  /* ===================== Performance ===================== */
+  const PFIELDS = {
+    rider_id: ["riderid", "id", "courierid", "driverid"],
+    rider_name: ["ridername", "name", "couriername", "drivername"],
+    orders: ["orders", "completedorders", "grossorders", "totalorders"],
+    orders_in_time: ["ordersintime", "completedordersintime", "ontimeorders", "deliveredintime"],
+    late_orders: ["orderslate", "lateorders", "delayedorders"],
+    failed_orders: ["failedordersbyrider", "failedorders"],
+    chat_rate: ["chatwithcustomer", "chatrate", "chat"],
+    acceptance_rate: ["acceptancerate", "acceptance", "acceptrate", "exceptancerate", "exceptionrate"],
+    verification_rate: ["verificationsuccessrate", "verificationrate", "verificationscore", "verification"],
+    on_time_rate: ["ontimedeliveryscore", "ontimerate", "ontimescore", "ontime"],
+    fail_rate: ["failratescore", "failrate", "failorderrate", "failorder"],
+    final_score: ["finaldeliveryqualityscore", "finalqualityscore", "finalscore", "quality"],
+    segment: ["segment"],
+  };
+  const P_INT = ["orders", "orders_in_time", "late_orders", "failed_orders"];
+  const P_PCT = ["chat_rate", "acceptance_rate", "verification_rate", "on_time_rate", "fail_rate", "final_score"];
+  const pnorm = (t) => String(t ?? "").trim().toLowerCase().replace(/[\s_\-]+/g, "");
+  const SEGC = { A: "#16a34a", B: "#2563eb", C: "#f59e0b", D: "#f97316", E: "#ef4444", F: "#7f1d1d" };
+
+  let perfTab = "upload", perfRows = null, perfList = null, tipsData = null, tipLang = "en", perfInited = false;
+
+  function loadXlsx() {
+    if (typeof XLSX !== "undefined") return Promise.resolve();
+    return loadScript("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js");
+  }
+
+  function pctColumn(vals) {
+    const hasPct = vals.some((v) => typeof v === "string" && v.includes("%"));
+    const nums = vals.map((v) => {
+      const n = Number(String(v ?? "").replace("%", "").trim());
+      return String(v ?? "").trim() === "" || !isFinite(n) ? 0 : n;
+    });
+    if (hasPct) return nums;
+    const mx = nums.length ? Math.max(...nums) : 0;
+    return mx <= 1 ? nums.map((n) => n * 100) : nums;
+  }
+
+  function buildClean(headers, data) {
+    const byNorm = {};
+    headers.forEach((h, i) => { if (!(pnorm(h) in byNorm)) byNorm[pnorm(h)] = i; });
+    const map = {};
+    for (const [k, aliases] of Object.entries(PFIELDS)) {
+      const a = aliases.find((x) => x in byNorm);
+      map[k] = a === undefined ? null : byNorm[a];
+    }
+    const missing = Object.keys(PFIELDS).filter((k) => map[k] === null);
+    if (map.rider_id === null) return { map, missing, rows: [] };
+    const col = (k) => data.map((r) => r[map[k]]);
+    const out = data.map((r) => ({
+      rider_id: String(r[map.rider_id] ?? "").trim().replace(/\.0$/, ""),
+      rider_name: map.rider_name !== null ? String(r[map.rider_name] ?? "").trim().replace(/^nan$/i, "") : "",
+    }));
+    for (const k of P_INT) {
+      const vals = map[k] !== null ? col(k) : null;
+      out.forEach((o, i) => { o[k] = vals ? Math.max(0, Math.trunc(Number(String(vals[i]).replace(/,/g, "")) || 0)) : 0; });
+    }
+    if (map.late_orders === null) out.forEach((o) => { o.late_orders = Math.max(0, o.orders - o.orders_in_time); });
+    for (const k of P_PCT) {
+      const vals = map[k] !== null ? pctColumn(col(k)) : null;
+      out.forEach((o, i) => { o[k] = vals ? vals[i] : 0; });
+    }
+    out.forEach((o, i) => {
+      const sg = map.segment !== null ? String(data[i][map.segment] ?? "").trim() : "";
+      o.segment = sg || "—";
+    });
+    const seen = new Map();
+    out.filter((o) => o.rider_id && o.rider_id.toLowerCase() !== "nan").forEach((o) => seen.set(o.rider_id, o)); // last one wins
+    return { map, missing, rows: [...seen.values()] };
+  }
+
+  const PCOLS = () => [["rider_id", "colId"], ["rider_name", "colName"], ["orders", "colOrders"], ["orders_in_time", "colInTime"], ["late_orders", "colLate"], ["failed_orders", "colFailed"],
+    ["chat_rate", "colChat"], ["acceptance_rate", "colAcc"], ["on_time_rate", "colOnTime"], ["verification_rate", "colVer"], ["fail_rate", "colFail"], ["final_score", "colFinal"], ["segment", "colSeg"]];
+  const PCT_SET = new Set(P_PCT);
+  const cellFmt = (k, v) => (PCT_SET.has(k) ? Number(v).toFixed(2) + "%" : k === "segment" ? `<b style="color:${SEGC[String(v).toUpperCase()] || "var(--muted)"}">${esc(v)}</b>` : esc(v));
+
+  function renderPerfTabs() {
+    $("perfTabs").innerHTML = ["upload", "data", "tips"].map((t) => `<button class="chip" data-t="${t}" aria-pressed="${t === perfTab}">${esc(T("pt_" + t))}</button>`).join("");
+    $("perfTabs").querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => { perfTab = b.dataset.t; showPerfTab(); }));
+    ["upload", "data", "tips"].forEach((t) => $("pt-" + t).classList.toggle("hidden", t !== perfTab));
+  }
+  function showPerfTab() {
+    renderPerfTabs();
+    if (perfTab === "data") loadPerfData();
+    if (perfTab === "tips") loadTips();
+  }
+  function initPerf() {
+    if (!perfInited) {
+      perfInited = true;
+      $("daysCovered").value = Math.max(new Date().getDate() - 1, 1);
+    }
+    showPerfTab();
+    loadPerfData(true);
+  }
+
+  $("perfFile").addEventListener("change", async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    $("perfErr").textContent = ""; $("perfPreview").classList.add("hidden"); perfRows = null;
+    try {
+      await loadXlsx();
+      const wb = f.name.toLowerCase().endsWith(".csv") ? XLSX.read(await f.text(), { type: "string" }) : XLSX.read(await f.arrayBuffer(), { type: "array" });
+      const aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: "" }).filter((r) => r.some((c) => String(c).trim() !== ""));
+      const headers = aoa[0] || [], data = aoa.slice(1);
+      $("perfFileInfo").textContent = T("rowsLoaded", { r: data.length, c: headers.length });
+      const res = buildClean(headers, data);
+      if (res.map.rider_id === null || res.missing.length) {
+        $("perfErr").textContent = T("missingCols") + res.missing.join(", ");
+        return;
+      }
+      perfRows = res.rows;
+      const segs = {};
+      perfRows.forEach((r) => { segs[r.segment] = (segs[r.segment] || 0) + 1; });
+      $("segCounts").textContent = Object.entries(segs).map(([k, v]) => k + ": " + v).join(" | ");
+      $("prevHead").innerHTML = PCOLS().map(([, l]) => `<th>${esc(T(l))}</th>`).join("");
+      $("prevBody").innerHTML = perfRows.slice(0, 15).map((r) => "<tr>" + PCOLS().map(([k]) => `<td class="num">${cellFmt(k, r[k])}</td>`).join("") + "</tr>").join("");
+      updTgt();
+      $("perfPreview").classList.remove("hidden");
+    } catch (err) {
+      $("perfErr").textContent = T("e_generic") + (err && err.message ? " (" + err.message + ")" : "");
+    }
+    e.target.value = "";
+  });
+  function updTgt() {
+    const t = +$("tgtPerDay").value || 0, d = +$("daysCovered").value || 0;
+    $("tgtLine").textContent = T("tgtLine", { t, d, e: t * d });
+  }
+  $("tgtPerDay").addEventListener("input", updTgt);
+  $("daysCovered").addEventListener("input", updTgt);
+
+  $("perfGo").addEventListener("click", async () => {
+    if (!perfRows || !perfRows.length) return;
+    if (!confirm(T("confirmReplace"))) return;
+    const tpd = Math.max(1, +$("tgtPerDay").value || 1), days = Math.min(31, Math.max(1, +$("daysCovered").value || 1));
+    $("perfGo").disabled = true; $("perfErr").textContent = "";
+    let inserted = 0, skipped = 0;
+    try {
+      for (let i = 0; i < perfRows.length; i += 100) {
+        $("perfProg").textContent = T("uploading", { n: Math.min(i + 100, perfRows.length), t: perfRows.length });
+        const r = await api("/api/admin/performance/upload", { method: "POST", body: JSON.stringify({ first: i === 0, rows: perfRows.slice(i, i + 100), target_per_day: tpd, days_covered: days }) });
+        inserted += r.inserted; skipped += r.skipped;
+      }
+      $("perfProg").textContent = "";
+      toast(T("uploadedOk", { n: inserted, s: skipped }));
+      $("perfPreview").classList.add("hidden"); $("perfFileInfo").textContent = ""; perfRows = null;
+      perfTab = "data"; showPerfTab();
+    } catch (err) { $("perfProg").textContent = ""; if (err.code === "key" || err.code === "missing") handleErr(err); else $("perfErr").textContent = err.message; }
+    finally { $("perfGo").disabled = false; }
+  });
+
+  async function loadPerfData(metaOnly) {
+    try {
+      perfList = await api("/api/admin/performance");
+      const m = perfList.meta;
+      $("perfSub").textContent = m.count ? T("lastUpload", { t: new Date(m.uploaded_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }), n: m.count }) : T("noPerf");
+      if (!metaOnly) renderPerfData();
+    } catch (e) { handleErr(e); }
+  }
+  function renderPerfData() {
+    if (!perfList) return;
+    const all = perfList.rows;
+    const segs = [...new Set(all.map((r) => String(r.segment || "—")))].sort();
+    const cur = $("pdSeg").value;
+    $("pdSeg").innerHTML = `<option value="">${esc(T("allSegs"))}</option>` + segs.map((s) => `<option${s === cur ? " selected" : ""}>${esc(s)}</option>`).join("");
+    const q = $("pdSearch").value.trim().toLowerCase(), sg = $("pdSeg").value, below = $("pdBelow").checked;
+    const miss = (r) => (r.target_per_day > 0 && r.days_covered > 0 ? Math.max(r.target_per_day * r.days_covered - r.orders, 0) : null);
+    const rows = all.filter((r) => (!q || String(r.rider_id).toLowerCase().includes(q) || String(r.rider_name || "").toLowerCase().includes(q)) && (!sg || String(r.segment || "—") === sg) && (!below || miss(r) > 0));
+    $("pdHead").innerHTML = PCOLS().map(([, l]) => `<th>${esc(T(l))}</th>`).join("") + `<th>${esc(T("colTarget"))}</th>`;
+    $("pdBody").innerHTML = rows.length
+      ? rows.map((r) => { const m = miss(r); return "<tr>" + PCOLS().map(([k]) => `<td class="num">${cellFmt(k, r[k])}</td>`).join("") + `<td class="num ${m ? "sev-hi" : "sev-ok"}">${m === null ? "–" : m}</td></tr>`; }).join("")
+      : `<tr><td colspan="14" class="empty">${esc(T("noPerf"))}</td></tr>`;
+    $("pdCount").textContent = T("shown", { n: rows.length });
+    renderPerfData.rows = rows;
+  }
+  ["pdSearch", "pdSeg", "pdBelow"].forEach((id) => $(id).addEventListener("input", renderPerfData));
+  $("pdDownload").addEventListener("click", async () => {
+    const rows = renderPerfData.rows || [];
+    if (!rows.length) return;
+    await loadXlsx();
+    const out = rows.map((r) => Object.fromEntries(PCOLS().map(([k, l]) => [T(l), PCT_SET.has(k) ? Math.round(r[k] * 100) / 100 : r[k]])));
+    const ws = XLSX.utils.json_to_sheet(out), wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Riders");
+    XLSX.writeFile(wb, "rider_performance_" + new Date().toISOString().slice(0, 10) + ".xlsx");
+  });
+
+  /* ----- tips editor ----- */
+  const TIP_FIELDS = ["title", "intro", "note", "howto", "avoid_title", "avoid", "closing", "img"];
+  function stepsToText(steps) { return (steps || []).map(([t, ls]) => "## " + t + "\n" + ls.join("\n")).join("\n\n"); }
+  function textToSteps(txt) {
+    const steps = []; let cur = null;
+    for (const raw of txt.split(/\r?\n/)) {
+      const l = raw.replace(/[\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g, "").trimEnd();
+      if (l.startsWith("## ")) { cur = [l.slice(3).trim(), []]; steps.push(cur); }
+      else if (l.trim()) { if (!cur) { cur = ["", []]; steps.push(cur); } cur[1].push(l.trim()); }
+    }
+    return steps;
+  }
+  async function loadTips() {
+    try { tipsData = await api("/api/admin/tips"); renderTips(); } catch (e) { handleErr(e); }
+  }
+  function renderTips() {
+    if (!tipsData) return;
+    $("tipLangs").innerHTML = ["en", "ar", "ur", "bn"].map((l) => `<button class="chip" data-l="${l}" aria-pressed="${l === tipLang}">${{ en: "English", ar: "العربية", ur: "اردو", bn: "বাংলা" }[l]}</button>`).join("");
+    $("tipLangs").querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => { tipLang = b.dataset.l; renderTips(); }));
+    const t = tipsData.tips[tipLang], rtl = tipLang === "ar" || tipLang === "ur";
+    $("tipCustom").classList.toggle("hidden", !tipsData.custom[tipLang]);
+    $("tipForm").innerHTML =
+      TIP_FIELDS.map((k) => `<label><span class="muted">${esc(T("f_" + k))}</span><input data-k="${k}" dir="${rtl ? "rtl" : "ltr"}" value="${esc(t[k])}"></label>`).join("") +
+      `<label><span class="muted">${esc(T("f_steps"))}</span><textarea id="tipSteps" rows="14" dir="${rtl ? "rtl" : "ltr"}">${esc(stepsToText(t.steps))}</textarea></label>
+       <div class="muted" style="font-size:12.5px">${esc(T("f_stepsHelp"))}</div>`;
+    const img = $("tipImgPrev");
+    img.classList.toggle("hidden", !tipsData.image);
+    if (tipsData.image) img.src = "/api/tips-image?t=" + Date.now();
+    $("tipImgRemove").classList.toggle("hidden", !tipsData.image);
+  }
+  $("tipSave").addEventListener("click", async () => {
+    const tip = {};
+    $("tipForm").querySelectorAll("input[data-k]").forEach((i) => { tip[i.dataset.k] = i.value; });
+    tip.steps = textToSteps($("tipSteps").value);
+    try { await api("/api/admin/tips", { method: "POST", body: JSON.stringify({ lang: tipLang, tip }) }); toast(T("tipsSaved")); loadTips(); } catch (e) { handleErr(e); }
+  });
+  $("tipReset").addEventListener("click", async () => {
+    try { await api("/api/admin/tips", { method: "POST", body: JSON.stringify({ lang: tipLang, reset: true }) }); toast(T("tipsReset")); loadTips(); } catch (e) { handleErr(e); }
+  });
+  $("tipImgFile").addEventListener("change", async (e) => {
+    const f = e.target.files[0]; e.target.value = "";
+    if (!f) return;
+    if (f.size > 800 * 1024) return toast(T("imgBig"));
+    const dataUrl = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = no; r.readAsDataURL(f); });
+    try { await api("/api/admin/tips-image", { method: "POST", body: JSON.stringify({ dataUrl }) }); toast(T("imgSaved")); loadTips(); } catch (err) { handleErr(err); }
+  });
+  $("tipImgRemove").addEventListener("click", async () => {
+    try { await api("/api/admin/tips-image", { method: "POST", body: JSON.stringify({ remove: true }) }); toast(T("imgRemoved")); loadTips(); } catch (err) { handleErr(err); }
   });
 
   let timer = null;
@@ -722,6 +1088,10 @@
     if (overview) renderLive();
     if (report) renderReport();
     if (manage) renderRidersMgmt();
+    renderPerfTabs();
+    if (perfList && perfTab === "data") { renderPerfData(); loadPerfData(true); }
+    if (tipsData && perfTab === "tips") renderTips();
+    if (perfRows) updTgt();
   }
 
   applyStatic();
