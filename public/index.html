@@ -99,6 +99,7 @@
     .btn.violet { background: #6d28d9; color: #fff; }
     .btn.blue { background: #1d4ed8; color: #fff; }
     .btn.green { background: #15803d; color: #fff; }
+    .btn.danger-fill { background: #b42318; color: #fff; }
     .btn.quiet { background: var(--bg); color: var(--text); border: 1px solid var(--line); min-height: 50px; font-size: 16px; font-weight: 600; }
     .btn.danger { background: transparent; color: var(--red); border: 1px solid var(--line); min-height: 46px; font-size: 15px; font-weight: 600; }
     .stack > * + * { margin-top: 12px; }
@@ -168,8 +169,8 @@
     .setting p { margin-bottom: 10px; font-size: 15px; }
 
     /* tabs */
-    .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 4px; margin-bottom: 14px; }
-    .tabs button { border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 700; padding: 11px 8px; border-radius: 11px; min-height: 44px; cursor: pointer; }
+    .tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 4px; margin-bottom: 14px; }
+    .tabs button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 700; padding: 8px 2px; line-height: 1.25; border-radius: 11px; min-height: 44px; cursor: pointer; }
     .tabs button[aria-selected=true] { background: var(--brand-d); color: #fff; }
     @media (prefers-color-scheme: dark) { .tabs button[aria-selected=true] { background: var(--brand); color: #04201d; } }
 
@@ -219,6 +220,52 @@
     .foot { text-align: center; color: var(--muted); font-size: 12px; margin: 18px 0 8px; }
     .empty { text-align: center; color: var(--muted); padding: 26px 14px; background: var(--surface); border: 1px dashed var(--line); border-radius: 16px; }
 
+
+    /* shift card */
+    .shift { border-radius: 18px; padding: 16px 18px; margin-bottom: 14px; border: 2px solid var(--line); background: var(--surface); box-shadow: var(--shadow); }
+    .shift.act { background: var(--amber-soft); border-color: var(--amber); }
+    .shift.late { background: var(--red-soft); border-color: var(--red); }
+    .shift.ok { background: var(--green-soft); border-color: var(--green); }
+    .shift .sh-k { font-size: 12.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+    .shift .sh-n { font-size: 21px; font-weight: 800; margin: 2px 0; }
+    .shift .sh-t { font-size: 15px; font-weight: 700; direction: ltr; unicode-bidi: plaintext; }
+    .shift .sh-s { margin-top: 8px; font-size: 14px; color: var(--muted); }
+    .shift .sh-m { margin: 10px 0 12px; font-size: 14.5px; font-weight: 600; }
+    .shift .sh-c { font-size: 16px; font-weight: 800; margin-top: 10px; }
+    .shift .btn { margin-top: 4px; }
+    /* schedule */
+    .days { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; }
+    .days button { flex: none; min-width: 52px; border: 1.5px solid var(--line); background: var(--surface); color: var(--text); border-radius: 14px; padding: 6px 4px; font: inherit; font-weight: 700; line-height: 1.25; }
+    .days button small { display: block; color: var(--muted); font-size: 11px; font-weight: 600; }
+    .days button[aria-pressed=true] { background: var(--brand-d); border-color: var(--brand-d); color: #fff; }
+    .days button[aria-pressed=true] small { color: #d6f1ee; }
+    .slot { display: grid; grid-template-columns: 58px minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: end; margin-bottom: 10px; }
+    .slot b { font-size: 14px; padding-bottom: 12px; }
+    .slot label { margin: 0; font-size: 12px; color: var(--muted); }
+    .slot input[type=time] { width: 100%; min-width: 0; padding: 10px 6px; font: inherit; font-size: 17px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--text); direction: ltr; text-align: center; }
+    .scope { display: grid; gap: 8px; margin: 14px 0; }
+    .scope label { display: flex; gap: 10px; align-items: center; margin: 0; font-weight: 600; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 12px; }
+    .scope input { width: 20px; height: 20px; }
+    .wk { display: grid; gap: 6px; }
+    .wk div { display: flex; justify-content: space-between; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; font-size: 14.5px; }
+    .wk span.t { direction: ltr; unicode-bidi: plaintext; font-weight: 700; }
+    /* incentives */
+    .inc { background: var(--surface); border: 1px solid var(--line); border-inline-start: 6px solid var(--ic, #f59e0b); border-radius: 18px; padding: 18px; margin-bottom: 14px; box-shadow: var(--shadow); }
+    .inc-h { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
+    .inc-i { flex: none; width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; font-size: 24px; background: color-mix(in srgb, var(--ic, #f59e0b) 18%, transparent); }
+    .inc h3 { margin: 0; font-size: 18px; line-height: 1.35; }
+    .inc-p { color: var(--muted); font-size: 14.5px; margin: 6px 0 10px; }
+    .inc-l { margin: 6px 0 12px; padding-inline-start: 20px; font-size: 15px; }
+    .inc-l li { margin: 6px 0; }
+    .inc-f { background: var(--bg); border: 1px dashed var(--ic, #f59e0b); border-radius: 12px; padding: 10px 12px; margin: 8px 0; font-weight: 700; font-size: 14.5px; }
+    .inc-t { overflow-x: auto; margin: 12px -4px 4px; border-radius: 12px; }
+    .inc-t table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 300px; }
+    .inc-t th { background: var(--ic, #f59e0b); color: #1b1300; padding: 9px 8px; font-weight: 800; font-size: 12.5px; line-height: 1.3; text-align: center; }
+    .inc-t td { padding: 10px 8px; text-align: center; border-bottom: 1px solid var(--line); }
+    .inc-t td:first-child { font-weight: 800; font-size: 17px; }
+    .inc-t tr:nth-child(even) td { background: var(--bg); }
+    .inc-n { margin-top: 10px; font-size: 12.5px; color: var(--muted); }
+
     #message {
       position: fixed; inset-inline: 16px; top: calc(env(safe-area-inset-top) + 64px); z-index: 8;
       max-width: 448px; margin: 0 auto; background: #0f1b2d; color: #fff; padding: 12px 16px; border-radius: 12px;
@@ -259,9 +306,12 @@
       <div class="tabs" role="tablist">
         <button type="button" role="tab" id="tabOrders" data-tab="orders" aria-selected="true"></button>
         <button type="button" role="tab" id="tabPerf" data-tab="perf" aria-selected="false"></button>
+        <button type="button" role="tab" id="tabSch" data-tab="sch" aria-selected="false"></button>
+        <button type="button" role="tab" id="tabInc" data-tab="inc" aria-selected="false"></button>
       </div>
 
       <div id="ordersPane">
+      <div id="shiftCard"></div>
       <div id="ask" class="ask hidden" role="status"><span class="dot"></span><span id="askText"></span></div>
 
       <div class="card">
@@ -274,6 +324,8 @@
       </div>
 
       <div id="perfPane" class="hidden"></div>
+      <div id="schPane" class="hidden"></div>
+      <div id="incPane" class="hidden"></div>
 
       <details class="card" id="settings" style="padding:0">
         <summary id="settingsTitle"></summary>
@@ -452,6 +504,21 @@
         e: { id_required: "রাইডার নম্বর দিন।", not_registered: "এই নম্বর নিবন্ধিত নয়। ম্যানেজমেন্টের সাথে যোগাযোগ করুন।", network: "সংযোগ করা যায়নি। ইন্টারনেট দেখে আবার চেষ্টা করুন।", offline: "এখন ইন্টারনেট নেই।", session: "সেশন শেষ। আবার লগইন করুন।", generic: "ত্রুটি হয়েছে, আবার চেষ্টা করুন।", no_order: "আগে অর্ডার নথিভুক্ত করুন।", unsupported: "এই ব্রাউজার নোটিফিকেশন সমর্থন করে না।", perm: "অ্যাপ চালাতে নোটিফিকেশনের অনুমতি দিতে হবে।", server: "সার্ভার নোটিফিকেশনের জন্য প্রস্তুত নয়। ম্যানেজমেন্টের সাথে যোগাযোগ করুন।", push_expired: "সাবস্ক্রিপশন শেষ। নোটিফিকেশন আবার চালু করুন।", push_off: "নোটিফিকেশন চালু নেই।" },
       },
     };
+    /* shift + incentives strings */
+    const X18N = {
+      en: { tab_inc: "Incentives", sh_title: "Your shift", sh_sups: "Supervisors", sh_in: "Starts in {n} min", sh_now: "Starting now", sh_started: "Started {n} min ago", sh_next: "Next shift", sh_open: "Open the delivery app, start your shift, then press the button.", sh_late_warn: "Your shift already started. Confirm now!", sh_btn: "I started my shift", sh_ok: "Shift confirmed ✓", sh_at: "Confirmed at {t}", sh_late: "{n} min late", sh_absent: "The supervisor marked you absent for this shift.", sh_done: "Shift confirmed. Have a great shift!", sh_early: "Too early to confirm.", inc_title: "Incentives", inc_sub: "Everything you need to know about earning extra", inc_none: "No incentives have been published yet." },
+      ar: { tab_inc: "الحوافز", sh_title: "شيفتك", sh_sups: "المشرفين", sh_in: "يبدأ بعد {n} دقيقة", sh_now: "يبدأ الآن", sh_started: "بدأ منذ {n} دقيقة", sh_next: "الشيفت القادم", sh_open: "افتح تطبيق التوصيل وابدأ الشيفت، ثم اضغط الزر.", sh_late_warn: "الشيفت بدأ بالفعل! أكّد الآن.", sh_btn: "بدأت الشيفت", sh_ok: "تم تأكيد الشيفت ✓", sh_at: "تأكيدك الساعة {t}", sh_late: "متأخر {n} دقيقة", sh_absent: "المشرف سجّلك غائب في هذا الشيفت.", sh_done: "تم تأكيد الشيفت. شيفت موفق!", sh_early: "لسه بدري على التأكيد.", inc_title: "الحوافز", inc_sub: "كل ما تحتاج معرفته عن الدخل الإضافي", inc_none: "لا توجد حوافز منشورة حالياً." },
+      ur: { tab_inc: "انسنٹوز", sh_title: "آپ کی شفٹ", sh_sups: "سپروائزر", sh_in: "{n} منٹ میں شروع", sh_now: "ابھی شروع", sh_started: "{n} منٹ پہلے شروع ہوئی", sh_next: "اگلی شفٹ", sh_open: "ڈیلیوری ایپ کھولیں، شفٹ شروع کریں، پھر بٹن دبائیں۔", sh_late_warn: "شفٹ شروع ہو چکی ہے! ابھی تصدیق کریں۔", sh_btn: "میں نے شفٹ شروع کر دی", sh_ok: "شفٹ کی تصدیق ہو گئی ✓", sh_at: "آپ کی تصدیق {t} بجے", sh_late: "{n} منٹ تاخیر", sh_absent: "سپروائزر نے اس شفٹ میں آپ کو غیر حاضر لگایا ہے۔", sh_done: "شفٹ کی تصدیق ہو گئی۔ آپ کی شفٹ اچھی گزرے!", sh_early: "تصدیق کے لیے ابھی جلدی ہے۔", inc_title: "انسنٹوز", inc_sub: "اضافی کمائی کے بارے میں سب کچھ", inc_none: "ابھی کوئی انسنٹو شائع نہیں ہوا۔" },
+      bn: { tab_inc: "ইনসেনটিভ", sh_title: "আপনার শিফট", sh_sups: "সুপারভাইজার", sh_in: "{n} মিনিট পরে শুরু", sh_now: "এখনই শুরু", sh_started: "{n} মিনিট আগে শুরু হয়েছে", sh_next: "পরবর্তী শিফট", sh_open: "ডেলিভারি অ্যাপ খুলুন, শিফট শুরু করুন, তারপর বোতাম চাপুন।", sh_late_warn: "শিফট শুরু হয়ে গেছে! এখনই নিশ্চিত করুন।", sh_btn: "আমি শিফট শুরু করেছি", sh_ok: "শিফট নিশ্চিত হয়েছে ✓", sh_at: "আপনি {t} এ নিশ্চিত করেছেন", sh_late: "{n} মিনিট দেরি", sh_absent: "সুপারভাইজার এই শিফটে আপনাকে অনুপস্থিত দেখিয়েছেন।", sh_done: "শিফট নিশ্চিত হয়েছে। শুভ শিফট!", sh_early: "নিশ্চিত করতে এখনও আগেভাগে।", inc_title: "ইনসেনটিভ", inc_sub: "অতিরিক্ত আয় সম্পর্কে সব কিছু", inc_none: "এখনও কোনো ইনসেনটিভ প্রকাশিত হয়নি।" },
+    };
+    const SCH = {
+      en: { tab_sch: "Shifts", sh_none: "You haven't set your shifts yet.", sc_title: "My shifts", sc_sub: "Set your shifts for each day (up to 3). You will get a reminder 15 minutes before each shift.", sc_slot: "Shift {n}", sc_from: "From", sc_to: "To", sc_scope_day: "This day only", sc_scope_week: "The whole week (7 days from this day)", sc_save: "Save shifts", sc_saved: "Shifts saved.", sc_bad: "Check the times: each shift needs a start and an end, and shifts must not overlap.", sc_off: "Day off", sc_today: "Today", sc_week: "This week" },
+      ar: { tab_sch: "شيفتاتي", sh_none: "لم تحدد شيفتاتك بعد.", sc_title: "شيفتاتي", sc_sub: "حدد شيفتاتك لكل يوم (حتى 3). سيصلك تنبيه قبل كل شيفت بـ 15 دقيقة.", sc_slot: "الشيفت {n}", sc_from: "من", sc_to: "إلى", sc_scope_day: "هذا اليوم فقط", sc_scope_week: "الأسبوع كله (7 أيام من هذا اليوم)", sc_save: "حفظ الشيفتات", sc_saved: "تم حفظ الشيفتات.", sc_bad: "راجع الأوقات: كل شيفت يحتاج بداية ونهاية، ولا يجوز أن تتداخل الشيفتات.", sc_off: "إجازة", sc_today: "اليوم", sc_week: "هذا الأسبوع" },
+      ur: { tab_sch: "میری شفٹیں", sh_none: "آپ نے ابھی اپنی شفٹیں سیٹ نہیں کیں۔", sc_title: "میری شفٹیں", sc_sub: "ہر دن کی شفٹ سیٹ کریں (زیادہ سے زیادہ 3)۔ ہر شفٹ سے 15 منٹ پہلے یاد دہانی ملے گی۔", sc_slot: "شفٹ {n}", sc_from: "سے", sc_to: "تک", sc_scope_day: "صرف یہی دن", sc_scope_week: "پورا ہفتہ (اس دن سے 7 دن)", sc_save: "شفٹیں محفوظ کریں", sc_saved: "شفٹیں محفوظ ہو گئیں۔", sc_bad: "اوقات چیک کریں: ہر شفٹ کی شروعات اور اختتام ضروری ہے اور شفٹیں آپس میں نہ ٹکرائیں۔", sc_off: "چھٹی", sc_today: "آج", sc_week: "اس ہفتے" },
+      bn: { tab_sch: "আমার শিফট", sh_none: "আপনি এখনও শিফট সেট করেননি।", sc_title: "আমার শিফট", sc_sub: "প্রতিদিনের শিফট সেট করুন (সর্বোচ্চ 3টি)। প্রতিটি শিফটের 15 মিনিট আগে রিমাইন্ডার পাবেন।", sc_slot: "শিফট {n}", sc_from: "থেকে", sc_to: "পর্যন্ত", sc_scope_day: "শুধু এই দিন", sc_scope_week: "পুরো সপ্তাহ (এই দিন থেকে 7 দিন)", sc_save: "শিফট সংরক্ষণ করুন", sc_saved: "শিফট সংরক্ষিত হয়েছে।", sc_bad: "সময় দেখুন: প্রতিটি শিফটের শুরু ও শেষ দরকার এবং শিফট যেন ওভারল্যাপ না করে।", sc_off: "ছুটি", sc_today: "আজ", sc_week: "এই সপ্তাহ" },
+    };
+    for (const k of Object.keys(X18N)) { Object.assign(X18N[k], SCH[k]); I18N[k].x = X18N[k]; }
+
     const LANGS = ["ar", "ur", "bn", "en"];
 
     /* ===================== Helpers ===================== */
@@ -518,6 +585,12 @@
       $("stickyText").textContent = t.sticky;
       $("tabOrders").textContent = t.perf.tab_orders;
       $("tabPerf").textContent = t.perf.tab_perf;
+      $("tabInc").textContent = t.x.tab_inc;
+      $("tabSch").textContent = t.x.tab_sch;
+      if (curTab === "sch" && schData) renderSch();
+      renderShift();
+      if (incData && incData.reqLang !== lang) { incData = null; if (curTab === "inc") loadInc(); }
+      if (curTab === "inc") renderInc();
       if (rider) {
         $("hello").textContent = rider.name && rider.name !== rider.id ? t.hello_name.replace("{n}", rider.name) : t.hello;
         $("riderTag").textContent = "#" + rider.id;
@@ -714,6 +787,8 @@
           rider = body.rider;
           pushOn = !!body.pushEnabled;
           setPushUI(pushOn);
+          shiftInfo = body.shift || null;
+          shiftLoaded = true;
           if (!busy) { applyLang(); render(body); }
           giveTokenToWorker();
           syncNotification();
@@ -759,6 +834,8 @@
       } catch {}
       rider = null;
       perfData = null;
+      incData = null;
+      shiftInfo = null; shiftLoaded = false; schData = null;
       setTab("orders");
       last = { order: null, prompt: null };
       showLogin();
@@ -896,14 +973,158 @@
       curTab = tab;
       $("ordersPane").classList.toggle("hidden", tab !== "orders");
       $("perfPane").classList.toggle("hidden", tab !== "perf");
+      $("incPane").classList.toggle("hidden", tab !== "inc");
+      $("schPane").classList.toggle("hidden", tab !== "sch");
+      $("tabSch").setAttribute("aria-selected", String(tab === "sch"));
       $("tabOrders").setAttribute("aria-selected", String(tab === "orders"));
       $("tabPerf").setAttribute("aria-selected", String(tab === "perf"));
+      $("tabInc").setAttribute("aria-selected", String(tab === "inc"));
       render(last);
       if (tab === "perf") { renderPerf(); loadPerf(); }
+      if (tab === "inc") { renderInc(); loadInc(); }
+      if (tab === "sch") { renderSch(); loadSch(); }
       window.scrollTo(0, 0);
     }
     $("tabOrders").addEventListener("click", () => setTab("orders"));
     $("tabPerf").addEventListener("click", () => setTab("perf"));
+    $("tabInc").addEventListener("click", () => setTab("inc"));
+    $("tabSch").addEventListener("click", () => setTab("sch"));
+
+    /* ===================== Shift card ===================== */
+    let shiftInfo = null, shiftLoaded = false;
+    function renderShift() {
+      const box = $("shiftCard");
+      const sh = shiftInfo, X = T().x;
+      if (!rider || !shiftLoaded) { box.innerHTML = ""; return; }
+      if (!sh) {
+        box.innerHTML = `<div class="shift"><div class="sh-k">${esc(X.sh_title)}</div><div class="sh-m">${esc(X.sh_none)}</div><button type="button" class="btn quiet" id="shiftSet">${esc(X.sc_title)}</button></div>`;
+        $("shiftSet").addEventListener("click", () => setTab("sch"));
+        return;
+      }
+      const n = Math.abs(sh.mins);
+      const when = sh.mins > 0 ? X.sh_in : sh.mins === 0 ? X.sh_now : X.sh_started;
+      let cls = "", body = "";
+      if (sh.confirmed) {
+        cls = "ok";
+        body = `<div class="sh-c">${esc(X.sh_ok)}</div><div class="sh-s">${esc(X.sh_at.replace("{t}", fmtTime(sh.confirmed_at)))}${sh.late_min >= 5 ? " · " + esc(X.sh_late.replace("{n}", sh.late_min)) : ""}</div>`;
+      } else if (sh.can_confirm) {
+        const late = sh.mins < 0;
+        cls = late ? "late" : "act";
+        body = `<div class="sh-m">${esc(late ? X.sh_late_warn : X.sh_open)}</div><button type="button" class="btn ${late ? "danger-fill" : "amber"}" id="shiftBtn">${esc(X.sh_btn)}</button>`;
+      } else if (sh.sup_status === "absent") {
+        cls = "late";
+        body = `<div class="sh-c">${esc(X.sh_absent)}</div>`;
+      }
+      const sups = (sh.sups || []).length ? `<div class="sh-s">${esc(X.sh_sups)}: ${esc(sh.sups.join("، "))}</div>` : "";
+      const label = sh.phase === "upcoming" ? X.sh_next + " · " + sh.day : X.sh_title;
+      const state = sh.phase === "upcoming" ? "" : `<div class="sh-s">${esc(when.replace("{n}", n))}</div>`;
+      box.innerHTML = `<div class="shift ${cls}"><div class="sh-k">${esc(label)}</div><div class="sh-n" style="direction:ltr;unicode-bidi:plaintext">${esc(sh.start)} - ${esc(sh.end)}</div>${sh.band ? `<div class="sh-t" style="direction:inherit">${esc(sh.band)}</div>` : ""}${state}${sups}${body}</div>`;
+      const b = $("shiftBtn");
+      if (b) b.addEventListener("click", confirmShift);
+    }
+
+    async function confirmShift() {
+      const b = $("shiftBtn");
+      if (b) b.disabled = true;
+      try {
+        const { status, body } = await post("/api/shift/confirm", { token: getToken() });
+        if (status === 401) { store.del("riderToken"); showLogin(); return msg(errText("session")); }
+        if (!body.ok) { msg(body.code === "too_early" ? T().x.sh_early : errText(body.code)); return; }
+        shiftInfo = body.shift;
+        syncNotification();
+        msg(T().x.sh_done);
+      } catch {
+        msg(errText("network"));
+      } finally {
+        renderShift();
+      }
+    }
+
+    /* ===================== My shifts tab ===================== */
+    let schData = null, schDay = null, schScope = "day";
+    const LOCALE = { ar: "ar", ur: "ur", bn: "bn", en: "en-GB" };
+    const dayLabel = (d, opt) => new Date(d + "T00:00:00Z").toLocaleDateString(LOCALE[lang] || "en-GB", { timeZone: "UTC", ...opt });
+    async function loadSch() {
+      try {
+        const { status, body } = await post("/api/schedule", { token: getToken() });
+        if (status === 401) { store.del("riderToken"); showLogin(); return msg(errText("session")); }
+        if (body.ok) {
+          const first = !schData;
+          schData = body;
+          if (!schDay || !body.days.some((x) => x.day === schDay)) schDay = body.today;
+          if (curTab === "sch" && (first || !$("schPane").contains(document.activeElement))) renderSch();
+        } else if (!schData) msg(errText(body.code));
+      } catch {
+        if (!schData) msg(errText("offline"));
+      }
+    }
+    function renderSch() {
+      const pane = $("schPane"), X = T().x;
+      if (!schData) { pane.innerHTML = `<div class="empty">${esc(T().loading)}</div>`; return; }
+      const cur = schData.days.find((x) => x.day === schDay) || schData.days[0];
+      const chips = schData.days.map((x) => `<button type="button" data-day="${x.day}" aria-pressed="${x.day === schDay}">${esc(dayLabel(x.day, { weekday: "short" }))}<small>${esc(x.day === schData.today ? X.sc_today : dayLabel(x.day, { day: "numeric", month: "short" }))}</small></button>`).join("");
+      const rows = [0, 1, 2].map((i) => {
+        const sl = cur.slots[i] || { start: "", end: "" };
+        return `<div class="slot"><b>${esc(X.sc_slot.replace("{n}", i + 1))}</b><label>${esc(X.sc_from)}<input type="time" data-k="s${i}" value="${esc(sl.start.length === 4 ? "0" + sl.start : sl.start)}"></label><label>${esc(X.sc_to)}<input type="time" data-k="e${i}" value="${esc(sl.end.length === 4 ? "0" + sl.end : sl.end)}"></label></div>`;
+      }).join("");
+      const week = schData.days.map((x) => `<div><span>${esc(dayLabel(x.day, { weekday: "long", day: "numeric", month: "short" }))}</span><span class="t">${x.slots.length ? esc(x.slots.map((q) => q.start + "-" + q.end).join("  |  ")) : esc(X.sc_off)}</span></div>`).join("");
+      pane.innerHTML = `<div class="sect" style="margin-top:2px">${esc(X.sc_title)}</div><p class="muted" style="margin:-6px 2px 12px;font-size:14px">${esc(X.sc_sub)}</p>
+        <div class="days">${chips}</div>
+        <div class="card">${rows}
+          <div class="scope"><label><input type="radio" name="scope" value="day" ${schScope === "day" ? "checked" : ""}>${esc(X.sc_scope_day)}</label><label><input type="radio" name="scope" value="week" ${schScope === "week" ? "checked" : ""}>${esc(X.sc_scope_week)}</label></div>
+          <button type="button" class="btn" id="schSave">${esc(X.sc_save)}</button></div>
+        <div class="sect">${esc(X.sc_week)}</div><div class="wk">${week}</div>`;
+      pane.querySelectorAll("[data-day]").forEach((b) => b.addEventListener("click", () => { schDay = b.dataset.day; renderSch(); }));
+      pane.querySelectorAll("input[name=scope]").forEach((r) => r.addEventListener("change", () => { schScope = r.value; }));
+      $("schSave").addEventListener("click", saveSch);
+    }
+    async function saveSch() {
+      const pane = $("schPane");
+      const slots = [0, 1, 2].map((i) => ({ start: pane.querySelector(`[data-k=s${i}]`).value, end: pane.querySelector(`[data-k=e${i}]`).value }));
+      const b = $("schSave"); b.disabled = true;
+      try {
+        const { status, body } = await post("/api/schedule/save", { token: getToken(), day: schDay, scope: schScope, slots });
+        if (status === 401) { store.del("riderToken"); showLogin(); return msg(errText("session")); }
+        if (!body.ok) return msg(body.code === "bad_slots" ? T().x.sc_bad : errText(body.code));
+        msg(T().x.sc_saved);
+        await loadSch(); renderSch();
+        refresh();
+      } catch {
+        msg(errText("network"));
+      } finally {
+        if ($("schSave")) $("schSave").disabled = false;
+      }
+    }
+
+    /* ===================== Incentives tab ===================== */
+    let incData = null;
+    async function loadInc() {
+      const asked = lang;
+      try {
+        const { status, body } = await post("/api/incentives", { token: getToken(), lang: asked });
+        if (status === 401) { store.del("riderToken"); showLogin(); return msg(errText("session")); }
+        if (body.ok) { incData = { cards: body.cards || [], reqLang: asked }; if (curTab === "inc") renderInc(); }
+      } catch {
+        if (!incData) msg(errText("offline"));
+      }
+    }
+    function incCard(c) {
+      const color = /^#[0-9a-fA-F]{6}$/.test(c.color || "") ? c.color : "#f59e0b";
+      const lines = (c.lines || []).length ? `<ul class="inc-l">${c.lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>` : "";
+      const formulas = (c.formulas || []).map((f) => `<div class="inc-f" dir="auto">${esc(f)}</div>`).join("");
+      let table = "";
+      if (c.table && c.table.head && c.table.rows) {
+        table = `<div class="inc-t"><table><thead><tr>${c.table.head.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${c.table.rows.map((r) => `<tr>${r.map((v) => `<td dir="${/^[\d\s.,%+*/()=x\u00d7\u2013-]*$/.test(v) ? "ltr" : "auto"}">${esc(v)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+      }
+      return `<section class="inc" style="--ic:${color}"><div class="inc-h"><span class="inc-i">${esc(c.icon || "🎁")}</span><h3>${esc(c.title)}</h3></div>
+        ${c.intro ? `<p class="inc-p">${esc(c.intro)}</p>` : ""}${lines}${formulas}${table}${c.note ? `<p class="inc-n">${esc(c.note)}</p>` : ""}</section>`;
+    }
+    function renderInc() {
+      const pane = $("incPane"), X = T().x;
+      if (!incData) { pane.innerHTML = `<div class="empty">${esc(T().loading)}</div>`; return; }
+      if (!incData.cards.length) { pane.innerHTML = `<div class="empty">${esc(X.inc_none)}</div>`; return; }
+      pane.innerHTML = `<div class="sect" style="margin-top:2px">${esc(X.inc_title)}</div><p class="muted" style="margin:-6px 2px 12px;font-size:14px">${esc(X.inc_sub)}</p>` + incData.cards.map(incCard).join("");
+    }
 
     async function loadPerf() {
       try {
@@ -997,6 +1218,7 @@
       if (!pendingDo || !getToken()) return;
       const a = pendingDo;
       pendingDo = null;
+      if (a === "shift_ok") { setTab("orders"); return; }
       // only run steps that are valid right now, otherwise just show the screen
       const stage = last.order ? last.order.stage : null;
       const ok =
