@@ -1,1 +1,267 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Supervisor</title>
+  <meta name="theme-color" content="#0f766e">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f3f5f7; --surface: #fff; --text: #0f1b2d; --muted: #5b6b7f; --line: #e2e8ef;
+      --brand: #0f766e; --brand-d: #0b5d57; --brand-soft: #e3f4f2;
+      --amber: #b45309; --amber-soft: #fef3c7; --green: #15803d; --green-soft: #dcfce7; --red: #b42318; --red-soft: #fee4e2;
+      --shadow: 0 1px 2px rgba(15,27,45,.06), 0 8px 24px rgba(15,27,45,.06);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b1220; --surface: #141d2e; --text: #eef2f7; --muted: #9aa9bd; --line: #243249;
+        --brand: #2dd4bf; --brand-d: #14b8a6; --brand-soft: #0f2e2e;
+        --amber: #fbbf24; --amber-soft: #3a2a08; --green: #4ade80; --green-soft: #0f2f1c; --red: #f87171; --red-soft: #3a1514;
+        --shadow: 0 1px 2px rgba(0,0,0,.4);
+      }
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body { margin: 0; min-height: 100dvh; background: var(--bg); color: var(--text); font: 16px/1.5 "Noto Sans Arabic", Inter, system-ui, Tahoma, sans-serif; }
+    .hidden { display: none !important; }
+    button { font: inherit; cursor: pointer; }
+    input { font: inherit; color: var(--text); background: var(--bg); border: 1.5px solid var(--line); border-radius: 14px; padding: 14px 16px; width: 100%; text-align: center; letter-spacing: 3px; font-size: 22px; text-transform: uppercase; direction: ltr; }
+    input:focus { border-color: var(--brand); outline: none; box-shadow: 0 0 0 4px var(--brand-soft); }
+    :focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+    .appbar { position: sticky; top: 0; z-index: 5; background: var(--brand); color: #fff; padding: calc(env(safe-area-inset-top) + 10px) 16px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    @media (prefers-color-scheme: dark) { .appbar { background: #0f2e2e; } }
+    .appbar b { font-size: 17px; }
+    .tools { display: flex; gap: 6px; align-items: center; }
+    .tools button { border: 0; background: rgba(255,255,255,.18); color: #fff; font-size: 13px; font-weight: 700; padding: 6px 12px; border-radius: 999px; min-height: 34px; }
+    main { max-width: 560px; margin: 0 auto; padding: 16px 16px 60px; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); padding: 18px; margin-bottom: 14px; }
+    .btn { width: 100%; min-height: 54px; border: 0; border-radius: 14px; background: var(--brand-d); color: #fff; font-weight: 700; font-size: 17px; }
+    @media (prefers-color-scheme: dark) { .btn { color: #04201d; background: var(--brand); } }
+    .btn:disabled { opacity: .55; }
+    .btn.green { background: #15803d; color: #fff; }
+    .err { color: var(--red); min-height: 22px; margin-top: 8px; font-size: 14.5px; }
+    .muted { color: var(--muted); }
+    h1 { font-size: 22px; margin: 0 0 4px; } h2 { font-size: 19px; margin: 0; }
+    .hero { text-align: center; padding: 22px 6px 14px; }
+    .hero img { width: 68px; height: 68px; border-radius: 18px; box-shadow: var(--shadow); }
 
+    .sh-h { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .time { font-weight: 700; direction: ltr; unicode-bidi: plaintext; color: var(--muted); }
+    .badge { display: inline-block; font-size: 13px; font-weight: 700; padding: 3px 12px; border-radius: 999px; white-space: nowrap; }
+    .b-idle { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+    .b-amber { background: var(--amber-soft); color: var(--amber); }
+    .b-green { background: var(--green-soft); color: var(--green); }
+    .b-red { background: var(--red-soft); color: var(--red); }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 14px 0 10px; }
+    .stats div { background: var(--bg); border-radius: 12px; padding: 8px 4px; text-align: center; }
+    .stats b { display: block; font-size: 22px; line-height: 1.2; }
+    .stats small { color: var(--muted); font-size: 11.5px; font-weight: 600; }
+    .g { color: var(--green); } .a { color: var(--amber); } .r { color: var(--red); }
+    .bar { display: flex; height: 8px; border-radius: 5px; overflow: hidden; background: var(--line); margin-bottom: 12px; }
+    .bar i { display: block; }
+    .conf { font-size: 14px; margin: 6px 0 12px; display: grid; gap: 4px; }
+    .rider { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center; padding: 11px 0; border-top: 1px solid var(--line); }
+    .rider .nm { font-weight: 700; } .rider .id { color: var(--muted); font-size: 13px; direction: ltr; display: inline-block; }
+    .rider .sub { grid-column: 1 / -1; font-size: 13px; color: var(--muted); margin-top: -4px; }
+    .pa { display: flex; gap: 6px; }
+    .pa button { width: 46px; height: 46px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--bg); font-size: 20px; font-weight: 800; color: var(--muted); }
+    .pa button.on.p { background: var(--green); border-color: var(--green); color: #fff; }
+    .pa button.on.x { background: var(--red); border-color: var(--red); color: #fff; }
+    .filters { display: flex; gap: 6px; margin: 4px 0 6px; flex-wrap: wrap; }
+    .filters button { border: 1px solid var(--line); background: var(--surface); color: var(--muted); border-radius: 999px; padding: 6px 12px; font-weight: 700; font-size: 13px; }
+    .filters button[aria-pressed=true] { background: var(--brand-d); color: #fff; border-color: var(--brand-d); }
+    .empty { text-align: center; color: var(--muted); padding: 26px 10px; }
+    #toast { position: fixed; inset-inline: 16px; bottom: calc(18px + env(safe-area-inset-bottom)); max-width: 420px; margin: 0 auto; background: #0f1b2d; color: #fff; padding: 12px 16px; border-radius: 12px; text-align: center; z-index: 9; box-shadow: var(--shadow); }
+  </style>
+</head>
+<body>
+  <header class="appbar">
+    <b id="title"></b>
+    <div class="tools">
+      <button type="button" data-lang="ar">عربي</button>
+      <button type="button" data-lang="en">EN</button>
+      <button type="button" id="outBtn" class="hidden"></button>
+    </div>
+  </header>
+  <main>
+    <section id="gate" class="hidden">
+      <div class="hero"><img src="/icon-192.png" alt=""><h1 id="gTitle" style="margin-top:12px"></h1><p class="muted" id="gSub"></p></div>
+      <form class="card" id="gForm">
+        <input id="code" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="XXXXXXXX">
+        <div class="err" id="gErr" role="alert"></div>
+        <button class="btn" type="submit" id="gBtn" style="margin-top:6px"></button>
+      </form>
+    </section>
+    <section id="board" class="hidden">
+      <div style="margin:2px 2px 14px"><h1 id="hello"></h1><div class="muted" id="when"></div></div>
+      <div id="list"></div>
+    </section>
+  </main>
+  <p id="toast" class="hidden" role="status"></p>
+
+  <script>
+    const I = {
+      ar: {
+        dir: "rtl", title: "صفحة المشرف", gTitle: "دخول المشرف", gSub: "اكتب الكود الخاص بك من الإدارة.", go: "دخول", out: "خروج", bad: "الكود غير صحيح.", net: "تعذّر الاتصال، حاول مرة أخرى.",
+        hello: "أهلاً {n}", noShifts: "لا توجد شيفتات مسندة إليك.", later: "لاحقاً", before: "يبدأ بعد {n} دقيقة", running: "شغال الآن",
+        present: "حاضر", late: "متأخر", absent: "غائب", pending: "لم يؤكد", all: "الكل", only_pending: "لم يؤكد فقط",
+        noRiders: "لا يوجد مناديب في هذا الشيفت.", confirmBtn: "تأكيد حضور الشيفت", reconfirm: "تحديث التأكيد", confirmed: "أكّدت الشيفت الساعة {t}", other: "{n} أكّد الساعة {t}", waiting: "{n}: لم يؤكد بعد",
+        pendingQ: "{n} مندوب لم يؤكدوا الحضور. سيتم تسجيلهم غائبين. متابعة؟", done: "تم تأكيد الشيفت.", early: "لسه بدري على التأكيد.",
+        byRider: "أكّد بنفسه {t}", bySup: "سجّله المشرف", lateN: "متأخر {n} د", noApp: "لم يفتح التطبيق", noPush: "الإشعارات متوقفة", notYet: "لم يؤكد بعد",
+        presentBtn: "حاضر", absentBtn: "غائب",
+      },
+      en: {
+        dir: "ltr", title: "Supervisor", gTitle: "Supervisor sign-in", gSub: "Enter the code you received from management.", go: "Continue", out: "Sign out", bad: "Wrong code.", net: "Could not connect, try again.",
+        hello: "Hello {n}", noShifts: "No shifts are assigned to you.", later: "Later", before: "Starts in {n} min", running: "Running now",
+        present: "Present", late: "Late", absent: "Absent", pending: "Pending", all: "All", only_pending: "Pending only",
+        noRiders: "No riders in this shift.", confirmBtn: "Confirm shift attendance", reconfirm: "Update confirmation", confirmed: "You confirmed this shift at {t}", other: "{n} confirmed at {t}", waiting: "{n}: not confirmed yet",
+        pendingQ: "{n} riders have not confirmed. They will be marked absent. Continue?", done: "Shift confirmed.", early: "Too early to confirm.",
+        byRider: "Confirmed by rider {t}", bySup: "Marked by supervisor", lateN: "{n} min late", noApp: "app not opened", noPush: "notifications off", notYet: "not confirmed yet",
+        presentBtn: "Present", absentBtn: "Absent",
+      },
+    };
+    const $ = (id) => document.getElementById(id);
+    const esc = (x) => String(x ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    const ls = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} }, del(k) { try { localStorage.removeItem(k); } catch {} } };
+    let lang = ls.get("supLang") || ((navigator.language || "").toLowerCase().startsWith("ar") ? "ar" : "en");
+    if (!I[lang]) lang = "ar";
+    const T = (k, v) => { let s = I[lang][k] ?? I.en[k] ?? k; if (v) for (const x in v) s = s.replace("{" + x + "}", v[x]); return s; };
+    const clean = (s) => String(s || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+    const hhmm = (ms) => (ms ? new Date(ms).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "");
+    let code = clean(new URLSearchParams(location.search).get("c")) || clean(ls.get("supCode"));
+    let board = null, busy = false;
+    const filt = {}; // shift id -> "all" | "pending"
+    let toastTimer = null;
+    function toast(t) { const e = $("toast"); e.textContent = t; e.classList.remove("hidden"); clearTimeout(toastTimer); toastTimer = setTimeout(() => e.classList.add("hidden"), 3500); }
+
+    async function post(path, data) {
+      const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code, ...data }) });
+      return { status: res.status, body: await res.json().catch(() => ({})) };
+    }
+
+    function applyLang() {
+      document.documentElement.lang = lang; document.documentElement.dir = I[lang].dir;
+      document.querySelectorAll("[data-lang]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
+      $("title").textContent = T("title"); document.title = T("title");
+      $("gTitle").textContent = T("gTitle"); $("gSub").textContent = T("gSub"); $("gBtn").textContent = T("go"); $("outBtn").textContent = T("out");
+      if (board) render();
+    }
+    document.querySelectorAll("[data-lang]").forEach((b) => b.addEventListener("click", () => { lang = b.dataset.lang; ls.set("supLang", lang); applyLang(); }));
+
+    function showGate(msg) {
+      $("gate").classList.remove("hidden"); $("board").classList.add("hidden"); $("outBtn").classList.add("hidden");
+      $("gErr").textContent = msg || "";
+    }
+    $("gForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      code = clean($("code").value);
+      if (!code) return;
+      $("gBtn").disabled = true;
+      try { await load(true); } finally { $("gBtn").disabled = false; }
+    });
+    $("outBtn").addEventListener("click", () => { ls.del("supCode"); code = ""; board = null; showGate(); });
+
+    async function load(fromGate) {
+      if (busy) return;
+      try {
+        const { status, body } = await post("/api/sup/board", {});
+        if (status === 401 || body.code === "bad_code") { ls.del("supCode"); board = null; return showGate(fromGate ? T("bad") : ""); }
+        if (!body.ok) return fromGate ? showGate(T("net")) : null;
+        ls.set("supCode", code);
+        board = body;
+        $("gate").classList.add("hidden"); $("board").classList.remove("hidden"); $("outBtn").classList.remove("hidden");
+        render();
+      } catch {
+        if (fromGate) showGate(T("net"));
+      }
+    }
+
+    function phase(s, now) {
+      if (s.phase === "running") return ["b-green", T("running")];
+      if (s.phase === "before") return ["b-amber", T("before", { n: Math.max(0, Math.round((s.startAt - now) / 60000)) })];
+      return ["b-idle", T("later")];
+    }
+    const order = { running: 0, before: 1, upcoming: 2 };
+
+    function riderHtml(r, s) {
+      const pOn = r.status === "present", aOn = r.status === "absent";
+      let sub = "";
+      if (r.by === "supervisor") sub = T("bySup");
+      else if (r.by === "rider") sub = T("byRider", { t: hhmm(r.rider_at) }) + (r.late_min >= board.grace ? " · " + T("lateN", { n: r.late_min }) : "");
+      else sub = T("notYet") + (!r.app ? " · " + T("noApp") : !r.push ? " · " + T("noPush") : "");
+      if (r.by === "supervisor" && r.rider_at) sub += " · " + T("byRider", { t: hhmm(r.rider_at) });
+      return `<div class="rider"><div><span class="nm">${esc(r.name || r.id)}</span> <span class="id">#${esc(r.id)}</span> <span class="id" style="margin-inline-start:6px">🕒 ${esc(r.start)}-${esc(r.end)}</span></div>
+        <div class="pa"><button type="button" class="p ${pOn ? "on" : ""}" data-s="${s.id}" data-r="${esc(r.id)}" data-d="${esc(r.day)}" data-t="${r.slot}" data-a="present" aria-label="${esc(T("presentBtn"))}" aria-pressed="${pOn}">✓</button><button type="button" class="x ${aOn ? "on" : ""}" data-s="${s.id}" data-r="${esc(r.id)}" data-d="${esc(r.day)}" data-t="${r.slot}" data-a="absent" aria-label="${esc(T("absentBtn"))}" aria-pressed="${aOn}">✕</button></div>
+        <div class="sub">${esc(sub)}</div></div>`;
+    }
+
+    function render() {
+      if (!board) return;
+      const now = board.now;
+      $("hello").textContent = T("hello", { n: board.sup.name });
+      $("when").textContent = new Date(now).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", { weekday: "long", day: "numeric", month: "long" });
+      const shifts = [...board.shifts].sort((a, b) => (order[a.phase] - order[b.phase]) || a.startAt - b.startAt);
+      $("list").innerHTML = shifts.length ? shifts.map((s) => {
+        const [cls, text] = phase(s, now), c = s.counts, f = filt[s.id] || "all";
+        const w = (n) => (c.total ? (n / c.total * 100).toFixed(1) : 0) + "%";
+        const on = c.present - c.late;
+        const riders = s.riders.filter((r) => f === "all" || r.status === "pending");
+        const others = s.confirms.filter((x) => x.sup_id !== board.sup.id).map((x) => `<div>✅ ${esc(T("other", { n: x.name, t: hhmm(x.at) }))}</div>`).join("");
+        const mine = s.confirms.find((x) => x.sup_id === board.sup.id);
+        return `<section class="card" data-shift="${s.id}">
+          <div class="sh-h"><div><h2>${esc(s.name)}</h2><div class="time">${esc(s.start)} - ${esc(s.end)}</div></div><span class="badge ${cls}">${esc(text)}</span></div>
+          <div class="stats"><div><b class="g">${c.present}</b><small>${esc(T("present"))}</small></div><div><b class="a">${c.late}</b><small>${esc(T("late"))}</small></div><div><b class="r">${c.absent}</b><small>${esc(T("absent"))}</small></div><div><b>${c.pending}</b><small>${esc(T("pending"))}</small></div></div>
+          <div class="bar"><i style="width:${w(on)};background:var(--green)"></i><i style="width:${w(c.late)};background:var(--amber)"></i><i style="width:${w(c.absent)};background:var(--red)"></i></div>
+          <div class="conf">${mine ? `<div class="g"><b>✅ ${esc(T("confirmed", { t: hhmm(mine.at) }))}</b></div>` : ""}${others}</div>
+          ${c.total ? `<div class="filters"><button type="button" data-f="all" data-s="${s.id}" aria-pressed="${f === "all"}">${esc(T("all"))} (${c.total})</button><button type="button" data-f="pending" data-s="${s.id}" aria-pressed="${f === "pending"}">${esc(T("only_pending"))} (${c.pending})</button></div>` : ""}
+          ${riders.length ? riders.map((r) => riderHtml(r, s)).join("") : `<div class="empty">${esc(c.total ? "" : T("noRiders"))}</div>`}
+          ${c.total ? `<button type="button" class="btn ${mine ? "" : "green"}" data-confirm="${s.id}" style="margin-top:14px">${esc(T(mine ? "reconfirm" : "confirmBtn"))}</button>` : ""}
+        </section>`;
+      }).join("") : `<div class="card empty">${esc(T("noShifts"))}</div>`;
+
+      $("list").querySelectorAll(".pa button").forEach((b) => b.addEventListener("click", () => mark(+b.dataset.s, b.dataset.r, b.dataset.d, +b.dataset.t, b.dataset.a)));
+      $("list").querySelectorAll("[data-f]").forEach((b) => b.addEventListener("click", () => { filt[b.dataset.s] = b.dataset.f; render(); }));
+      $("list").querySelectorAll("[data-confirm]").forEach((b) => b.addEventListener("click", () => confirmShift(+b.dataset.confirm, b)));
+    }
+
+    async function mark(shiftId, riderId, day, slot, a) {
+      const s = board.shifts.find((x) => x.id === shiftId), r = s && s.riders.find((x) => x.id === riderId && x.day === day && x.slot === slot);
+      if (!r || busy) return;
+      let target = a;
+      if (r.status === a) { if (r.by === "supervisor") target = ""; else return; }
+      busy = true;
+      try {
+        const { status, body } = await post("/api/sup/mark", { shift_id: shiftId, rider_id: riderId, day, slot, status: target });
+        if (status === 401) { busy = false; return load(true); }
+        if (!body.ok) toast(T("net"));
+      } catch { toast(T("net")); }
+      busy = false;
+      load();
+    }
+
+    async function confirmShift(shiftId, btn) {
+      if (busy) return;
+      busy = true; btn.disabled = true;
+      try {
+        let { status, body } = await post("/api/sup/confirm", { shift_id: shiftId });
+        if (status === 409 && body.code === "pending") {
+          if (!confirm(T("pendingQ", { n: body.pending.length }))) { busy = false; btn.disabled = false; return; }
+          ({ status, body } = await post("/api/sup/confirm", { shift_id: shiftId, absent_pending: true }));
+        }
+        if (body.ok) toast(T("done"));
+        else toast(body.code === "too_early" ? T("early") : T("net"));
+      } catch { toast(T("net")); }
+      busy = false;
+      load();
+    }
+
+    applyLang();
+    if (code) load(false).then(() => { if (!board) showGate(); }); else showGate();
+    setInterval(() => { if (!document.hidden && board) load(); }, 20000);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden && board) load(); });
+  </script>
+</body>
+</html>
