@@ -33,6 +33,12 @@ const DEFAULTS = {
   MAX_ATTEMPTS: 3, // max repeats of the same question for one order
   STALE_HOURS: 4, // an open order with no movement closes itself
   MAX_SENDS_PER_TICK: 20, // send cap per minute (free plan limits)
+  SHIFT_LEAD_MIN: 15, // first shift reminder this many minutes before the shift starts
+  SHIFT_NAG_MIN: 5, // repeat the reminder every N minutes until the rider confirms
+  SHIFT_OPEN_MIN: 30, // the rider may confirm from this many minutes before the start
+  SHIFT_GRACE_MIN: 5, // confirming later than this after the start counts as late
+  SHIFT_MAX_NAGS: 30, // stop reminding after this many pushes
+  SHIFT_SENDS_PER_TICK: 15, // shift reminders sent per minute (free plan limits)
 };
 
 function cfg(env) {
@@ -189,6 +195,25 @@ const NOTICE = {
   },
 };
 
+const SHIFT_TXT = {
+  en: {
+    before: "{name}: starts in {n} min", now: "{name}: starting now", after: "{name}: started {n} min ago",
+    body: "Open the delivery app, start your shift, then confirm here.", act: "I started my shift",
+  },
+  ar: {
+    before: "{name}: يبدأ بعد {n} دقيقة", now: "{name}: يبدأ الآن", after: "{name}: بدأ منذ {n} دقيقة",
+    body: "افتح تطبيق التوصيل وابدأ الشيفت، ثم أكّد من هنا.", act: "بدأت الشيفت",
+  },
+  ur: {
+    before: "{name}: {n} منٹ میں شروع", now: "{name}: ابھی شروع", after: "{name}: {n} منٹ پہلے شروع ہوئی",
+    body: "ڈیلیوری ایپ کھولیں، شفٹ شروع کریں، پھر یہاں تصدیق کریں۔", act: "میں نے شفٹ شروع کر دی",
+  },
+  bn: {
+    before: "{name}: {n} মিনিট পরে শুরু", now: "{name}: এখনই শুরু", after: "{name}: {n} মিনিট আগে শুরু হয়েছে",
+    body: "ডেলিভারি অ্যাপ খুলুন, শিফট শুরু করুন, তারপর এখানে নিশ্চিত করুন।", act: "আমি শিফট শুরু করেছি",
+  },
+};
+
 // What the phone should show right now. While an order is open the notification is
 // "sticky": it carries the current step and the button for the next one.
 function buildNotice(state, lang) {
@@ -206,6 +231,19 @@ function buildNotice(state, lang) {
       title: q || L.order_title,
       body: q ? L.order_title + ": " + L.stage[o.stage] : L.stage[o.stage],
       actions: next.map((a) => ({ action: a, title: L.act[a] })),
+    };
+  }
+  const sh = state.shift;
+  if (sh && sh.need) {
+    const X = SHIFT_TXT[lang] || SHIFT_TXT.ar;
+    const tpl = sh.mins > 0 ? X.before : sh.mins === 0 ? X.now : X.after;
+    return {
+      ...base,
+      kind: "shift",
+      sticky: false,
+      title: tpl.replace("{name}", sh.name).replace("{n}", String(Math.abs(sh.mins))),
+      body: X.body,
+      actions: [{ action: "shift_ok", title: X.act }],
     };
   }
   if (p && p.type === "have_order") {
@@ -546,6 +584,19 @@ async function tick(env) {
       db.prepare("DELETE FROM prompts WHERE sent_at < ?").bind(cut),
       db.prepare("DELETE FROM orders WHERE status != 'active' AND updated_at < ?").bind(cut),
     ]);
+    const oldDay = new Date(cut).toISOString().slice(0, 10);
+    await safeRun(db.prepare("DELETE FROM attendance WHERE day < ?").bind(oldDay));
+    await safeRun(db.prepare("DELETE FROM rider_shifts WHERE day < ?").bind(oldDay));
+  }
+
+  // shift reminders go first and ignore the working hours (a shift can start early)
+  let shiftSent = 0;
+  try {
+    const r = await shiftTick(env, now, tz, c, Math.min(c.SHIFT_SENDS_PER_TICK, c.MAX_SENDS_PER_TICK));
+    out.shift = r;
+    shiftSent = r.sent + r.failed;
+  } catch (e) {
+    console.error("shiftTick failed", e && e.message ? e.message : e);
   }
 
   // 2) outside working hours: no questions
@@ -555,7 +606,8 @@ async function tick(env) {
   }
 
   // 3) who needs a question now?
-  const cap = c.MAX_SENDS_PER_TICK;
+  const cap = c.MAX_SENDS_PER_TICK - shiftSent;
+  if (cap <= 0) return out;
   const jobs = [];
 
   const haveOrder = await db
@@ -1182,6 +1234,637 @@ async function adminPerfList(env) {
   };
 }
 
+/* ---------------------------- Shifts, supervisors, attendance ---------------------------- */
+const pad2 = (n) => String(n).padStart(2, "0");
+const hhmm = (m) => pad2(Math.floor(m / 60) % 24) + ":" + pad2(m % 60);
+function parseHHMM(v) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(v || "").trim());
+  if (!m) return null;
+  const h = +m[1], mi = +m[2];
+  return h > 23 || mi > 59 ? null : h * 60 + mi;
+}
+
+// the real start/end of a shift for yesterday, today and tomorrow (night shifts cross midnight)
+function occurrences(now, tzp, s) {
+  const len = (((s.end_min - s.start_min) % 1440) + 1440) % 1440 || 1440;
+  return [-1, 0, 1].map((off) => {
+    const base = tzp.dayStart + off * DAY;
+    const startAt = base + s.start_min * MIN;
+    return { day: new Date(base + tzp.offset).toISOString().slice(0, 10), startAt, endAt: startAt + len * MIN };
+  });
+}
+
+// the occurrence that matters now: running, about to start (inside viewLead), or the next one
+function pickOcc(now, tzp, s, viewLead) {
+  const occ = occurrences(now, tzp, s);
+  const cur = occ
+    .filter((o) => now >= o.startAt - viewLead && now < o.endAt)
+    .sort((a, b) => b.startAt - a.startAt)[0];
+  if (cur) return { ...cur, phase: now < cur.startAt ? "before" : "running" };
+  const next = occ.filter((o) => o.startAt > now).sort((a, b) => a.startAt - b.startAt)[0];
+  return next ? { ...next, phase: "upcoming" } : null;
+}
+
+const DEFAULT_SHIFTS = [
+  ["Shift 1", "07:00", "11:00"], ["Shift 2", "11:00", "15:00"], ["Shift 3", "15:00", "19:00"],
+  ["Shift 4", "19:00", "23:00"], ["Shift 5", "23:00", "03:00"], ["Shift 6", "03:00", "07:00"],
+];
+
+async function seedShifts(env) {
+  const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM shifts").first();
+  if (n && n.n > 0) return;
+  await env.DB.batch(
+    DEFAULT_SHIFTS.map((x, i) =>
+      env.DB.prepare("INSERT INTO shifts (name, start_min, end_min, sort) VALUES (?, ?, ?, ?)")
+        .bind(x[0], parseHHMM(x[1]), parseHHMM(x[2]), i)
+    )
+  );
+}
+
+const PRESENT_SQL = "(a.sup_status = 'present' OR (a.sup_status IS NULL AND a.rider_at IS NOT NULL))";
+
+const dayKey = (ms, tzp) => new Date(ms + tzp.offset).toISOString().slice(0, 10);
+const dayStartMs = (day, tzp) => Date.parse(day + "T00:00:00Z") - tzp.offset;
+const slotLen = (s) => ((((s.end_min - s.start_min) % 1440) + 1440) % 1440) || 1440;
+
+async function activeBands(env) {
+  const r = await env.DB.prepare("SELECT id, name, start_min, end_min FROM shifts WHERE active = 1 ORDER BY start_min, id").all();
+  return (r && r.results) || [];
+}
+// the supervision window ("shift" in the admin) that contains a rider's shift start
+function bandFor(bands, startMin) {
+  for (const b of bands) if (((startMin - b.start_min + 1440) % 1440) < slotLen(b)) return b;
+  return null;
+}
+
+// Riders of one supervision window for one day: everyone whose own shift starts inside it
+async function shiftRiders(env, band, occ, tzp) {
+  const d0 = dayStartMs(occ.day, tzp);
+  const days = [occ.day, dayKey(d0 + DAY, tzp)];
+  const res = await env.DB
+    .prepare(
+      `SELECT r.id, r.name, rs.day, rs.start_min, rs.end_min, a.rider_at, a.sup_status, a.nags,
+         (SELECT COUNT(*) FROM devices d WHERE d.rider_id = r.id) AS devices,
+         (SELECT COUNT(*) FROM devices d WHERE d.rider_id = r.id AND d.push_subscription IS NOT NULL) AS pushes
+       FROM rider_shifts rs
+       JOIN riders r ON r.id = rs.rider_id AND r.active = 1
+       LEFT JOIN attendance a ON a.day = rs.day AND a.rider_id = rs.rider_id AND a.start_min = rs.start_min
+       WHERE rs.day IN (?1, ?2) ORDER BY rs.start_min, r.name, r.id LIMIT 900`
+    )
+    .bind(days[0], days[1])
+    .all();
+  const out = [];
+  for (const r of (res && res.results) || []) {
+    const startAt = dayStartMs(r.day, tzp) + r.start_min * MIN;
+    if (!(startAt >= occ.startAt && startAt < occ.endAt)) continue;
+    out.push({
+      id: r.id,
+      name: r.name,
+      day: r.day,
+      slot: r.start_min,
+      start: hhmm(r.start_min),
+      end: hhmm(r.end_min),
+      startAt,
+      status: r.sup_status || (r.rider_at ? "present" : "pending"),
+      by: r.sup_status ? "supervisor" : r.rider_at ? "rider" : null,
+      rider_at: r.rider_at || null,
+      late_min: r.rider_at ? Math.max(0, Math.floor((r.rider_at - startAt) / MIN)) : 0,
+      nags: r.nags || 0,
+      app: r.devices > 0,
+      push: r.pushes > 0,
+    });
+  }
+  return out;
+}
+
+function shiftCounts(riders, grace) {
+  const c = { total: riders.length, present: 0, absent: 0, pending: 0, late: 0 };
+  for (const r of riders) {
+    c[r.status]++;
+    if (r.status === "present" && r.late_min >= grace) c.late++;
+  }
+  return c;
+}
+
+async function shiftConfirms(env, shiftId, day) {
+  const res = await env.DB
+    .prepare(
+      `SELECT sc.sup_id, su.name, sc.at, sc.present, sc.absent FROM shift_confirm sc
+       JOIN supervisors su ON su.id = sc.sup_id WHERE sc.day = ? AND sc.shift_id = ?`
+    )
+    .bind(day, shiftId)
+    .all();
+  return (res && res.results) || [];
+}
+
+/* ---- the rider's own schedule: up to 3 shifts per day ---- */
+const HHMM_RE = /^\d{1,2}:\d{2}$/;
+
+function slotsOverlap(a, b) {
+  return ((b.s - a.s + 1440) % 1440) < a.len || ((a.s - b.s + 1440) % 1440) < b.len;
+}
+
+async function riderSchedule(env, device, now, c) {
+  const tzp = tzParts(now, c.TIMEZONE);
+  const days = Array.from({ length: 7 }, (_, i) => dayKey(tzp.dayStart + i * DAY, tzp));
+  const res = await env.DB
+    .prepare("SELECT day, start_min, end_min FROM rider_shifts WHERE rider_id = ? AND day >= ? AND day <= ? ORDER BY day, start_min")
+    .bind(device.rider_id, days[0], days[6])
+    .all();
+  const rows = (res && res.results) || [];
+  return json({
+    ok: true,
+    today: days[0],
+    days: days.map((d) => ({ day: d, slots: rows.filter((r) => r.day === d).map((r) => ({ start: hhmm(r.start_min), end: hhmm(r.end_min) })) })),
+  });
+}
+
+async function riderSaveSchedule(env, device, body, now, c) {
+  const tzp = tzParts(now, c.TIMEZONE);
+  const today = dayKey(tzp.dayStart, tzp);
+  const day = String((body && body.day) || "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day < today || day > dayKey(tzp.dayStart + 30 * DAY, tzp)) {
+    return fail("bad_day", "Invalid day", 400);
+  }
+  const input = Array.isArray(body.slots) ? body.slots : [];
+  if (input.length > 3) return fail("bad_slots", "Maximum 3 shifts a day", 400);
+  const slots = [];
+  for (const x of input) {
+    const a = String((x && x.start) || "").trim(), z = String((x && x.end) || "").trim();
+    if (!a && !z) continue; // empty row
+    const s = HHMM_RE.test(a) ? parseHHMM(a) : null, e = HHMM_RE.test(z) ? parseHHMM(z) : null;
+    if (s === null || e === null || s === e) return fail("bad_slots", "Invalid times", 400);
+    slots.push({ s, e, len: slotLen({ start_min: s, end_min: e }) });
+  }
+  for (let i = 0; i < slots.length; i++) {
+    for (let j = i + 1; j < slots.length; j++) {
+      if (slotsOverlap(slots[i], slots[j]) || slots[i].s === slots[j].s) return fail("bad_slots", "Shifts overlap", 400);
+    }
+  }
+  const d0 = Date.parse(day + "T00:00:00Z");
+  const days = body.scope === "week" ? Array.from({ length: 7 }, (_, i) => new Date(d0 + i * DAY).toISOString().slice(0, 10)) : [day];
+  const stmts = [];
+  for (const d of days) {
+    stmts.push(env.DB.prepare("DELETE FROM rider_shifts WHERE rider_id = ? AND day = ?").bind(device.rider_id, d));
+    for (const sl of slots) {
+      stmts.push(env.DB.prepare("INSERT INTO rider_shifts (rider_id, day, start_min, end_min) VALUES (?, ?, ?, ?)").bind(device.rider_id, d, sl.s, sl.e));
+    }
+  }
+  await env.DB.batch(stmts);
+  return json({ ok: true, days: days.length });
+}
+
+// The rider's current or next shift (null when he has not set any)
+async function riderShift(env, riderId, now, c) {
+  try {
+    const tzp = tzParts(now, c.TIMEZONE);
+    const keys = [-1, 0, 1].map((o) => dayKey(tzp.dayStart + o * DAY, tzp));
+    const res = await env.DB
+      .prepare("SELECT day, start_min, end_min FROM rider_shifts WHERE rider_id = ? AND day IN (?, ?, ?)")
+      .bind(riderId, ...keys)
+      .all();
+    const slots = ((res && res.results) || []).map((r) => {
+      const startAt = dayStartMs(r.day, tzp) + r.start_min * MIN;
+      return { ...r, startAt, endAt: startAt + slotLen(r) * MIN };
+    });
+    const open = c.SHIFT_OPEN_MIN * MIN;
+    let o = slots.filter((x) => now >= x.startAt - open && now < x.endAt).sort((a, b) => b.startAt - a.startAt)[0];
+    let phase = o ? (now < o.startAt ? "before" : "running") : "upcoming";
+    if (!o) o = slots.filter((x) => x.startAt > now).sort((a, b) => a.startAt - b.startAt)[0];
+    if (!o) return null;
+    const a = await env.DB
+      .prepare("SELECT rider_at, sup_status FROM attendance WHERE day = ? AND rider_id = ? AND start_min = ?")
+      .bind(o.day, riderId, o.start_min)
+      .first();
+    const band = bandFor(await activeBands(env), o.start_min);
+    let sups = [];
+    if (band) {
+      const sr = await env.DB
+        .prepare(
+          `SELECT su.name FROM shift_sups ss JOIN supervisors su ON su.id = ss.sup_id AND su.active = 1
+           WHERE ss.shift_id = ? ORDER BY su.name`
+        )
+        .bind(band.id)
+        .all();
+      sups = ((sr && sr.results) || []).map((x) => x.name);
+    }
+    const at = (a && a.rider_at) || null;
+    const can = phase !== "upcoming" && !at;
+    return {
+      name: hhmm(o.start_min) + " - " + hhmm(o.end_min),
+      band: band ? band.name : "",
+      start: hhmm(o.start_min),
+      end: hhmm(o.end_min),
+      day: o.day,
+      slot: o.start_min,
+      band_id: band ? band.id : null,
+      startAt: o.startAt,
+      endAt: o.endAt,
+      phase,
+      confirmed: !!at,
+      confirmed_at: at,
+      late_min: at ? Math.max(0, Math.floor((at - o.startAt) / MIN)) : 0,
+      sup_status: (a && a.sup_status) || null,
+      can_confirm: can,
+      need: can && !(a && a.sup_status),
+      mins: Math.round((o.startAt - now) / MIN),
+      sups,
+    };
+  } catch {
+    return null; // shifts not set up yet
+  }
+}
+
+async function riderConfirmShift(env, device, now) {
+  const c = cfg(env);
+  const sh = await riderShift(env, device.rider_id, now, c);
+  if (!sh) return fail("no_shift", "No shift set", 404);
+  if (!sh.confirmed) {
+    if (!sh.can_confirm) return fail("too_early", "Too early to confirm", 409);
+    await env.DB
+      .prepare(
+        `INSERT INTO attendance (day, band_id, rider_id, start_min, rider_at) VALUES (?1, ?2, ?3, ?4, ?5)
+         ON CONFLICT(day, rider_id, start_min) DO UPDATE SET rider_at = COALESCE(attendance.rider_at, excluded.rider_at)`
+      )
+      .bind(sh.day, sh.band_id, device.rider_id, sh.slot, now)
+      .run();
+  }
+  return json({ ok: true, shift: await riderShift(env, device.rider_id, now, c) });
+}
+
+// Cron: remind riders whose own shift is about to start (or has started) until they confirm
+async function shiftTick(env, now, tzp, c, cap) {
+  const out = { sent: 0, failed: 0 };
+  if (cap <= 0) return out;
+  const db = env.DB;
+  const lead = c.SHIFT_LEAD_MIN * MIN;
+  const every = c.SHIFT_NAG_MIN * MIN;
+  const jobs = [];
+  for (const off of [-1, 0, 1]) {
+    if (jobs.length >= cap) break;
+    const base = tzp.dayStart + off * DAY;
+    const day = dayKey(base, tzp);
+    let rows;
+    try {
+      rows = await db
+        .prepare(
+          `SELECT rs.rider_id, rs.start_min, d.id AS device_id, d.push_subscription AS sub
+           FROM rider_shifts rs
+           JOIN riders r ON r.id = rs.rider_id AND r.active = 1
+           JOIN devices d ON d.id = (SELECT d2.id FROM devices d2 WHERE d2.rider_id = r.id
+             AND d2.push_subscription IS NOT NULL ORDER BY d2.id DESC LIMIT 1)
+           LEFT JOIN attendance a ON a.day = rs.day AND a.rider_id = rs.rider_id AND a.start_min = rs.start_min
+           WHERE rs.day = ?1 AND a.rider_at IS NULL AND a.sup_status IS NULL
+             AND COALESCE(a.last_nag, 0) <= ?2 AND COALESCE(a.nags, 0) < ?3
+             AND ?4 + rs.start_min * 60000 <= ?5
+             AND ?4 + rs.start_min * 60000 + (((rs.end_min - rs.start_min + 1440) % 1440) * 60000) > ?6
+           LIMIT ?7`
+        )
+        .bind(day, now - every, c.SHIFT_MAX_NAGS, base, now + lead, now, cap - jobs.length)
+        .all();
+    } catch {
+      return out; // migration4 not run yet
+    }
+    for (const r of (rows && rows.results) || []) {
+      if (!jobs.some((j) => j.rider_id === r.rider_id)) jobs.push({ ...r, day });
+    }
+  }
+  if (!jobs.length) return out;
+
+  const ttl = Math.max(60, Math.min(600, c.SHIFT_NAG_MIN * 60));
+  const results = await Promise.all(
+    jobs.map(async (j) => {
+      let sub;
+      try { sub = JSON.parse(j.sub); } catch { return 410; }
+      return sendPush(sub, env, ttl);
+    })
+  );
+  let bands = [];
+  try { bands = await activeBands(env); } catch { /* ignore */ }
+  const stmts = [];
+  results.forEach((status, i) => {
+    const j = jobs[i];
+    if (status >= 200 && status < 300) {
+      out.sent++;
+      const band = bandFor(bands, j.start_min);
+      stmts.push(
+        db.prepare(
+          `INSERT INTO attendance (day, band_id, rider_id, start_min, nags, last_nag) VALUES (?1, ?2, ?3, ?4, 1, ?5)
+           ON CONFLICT(day, rider_id, start_min) DO UPDATE SET nags = COALESCE(attendance.nags, 0) + 1,
+             last_nag = excluded.last_nag`
+        ).bind(j.day, band ? band.id : null, j.rider_id, j.start_min, now)
+      );
+      return;
+    }
+    out.failed++;
+    if (status === 404 || status === 410) {
+      stmts.push(db.prepare("UPDATE devices SET push_subscription = NULL WHERE id = ?").bind(j.device_id));
+    }
+  });
+  if (stmts.length) await db.batch(stmts);
+  return out;
+}
+
+/* ---- supervisor side (login = personal code) ---- */
+const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+function newCode(len = 8) {
+  return Array.from(crypto.getRandomValues(new Uint8Array(len)), (x) => CODE_CHARS[x % CODE_CHARS.length]).join("");
+}
+
+async function getSup(env, code) {
+  const c = String(code || "").trim().toUpperCase();
+  if (!c || c.length > 20) return null;
+  try {
+    return await env.DB.prepare("SELECT id, name FROM supervisors WHERE code = ? AND active = 1").bind(c).first();
+  } catch {
+    return null;
+  }
+}
+
+async function supShiftFor(env, sup, shiftId, now, c) {
+  const s = await env.DB
+    .prepare(
+      `SELECT s.id, s.name, s.start_min, s.end_min FROM shift_sups ss
+       JOIN shifts s ON s.id = ss.shift_id AND s.active = 1 WHERE ss.sup_id = ? AND s.id = ?`
+    )
+    .bind(sup.id, shiftId)
+    .first();
+  if (!s) return null;
+  const tzp = tzParts(now, c.TIMEZONE);
+  const occ = pickOcc(now, tzp, s, 2 * HOUR);
+  return occ ? { s, occ, tzp } : null;
+}
+
+async function supBoard(env, sup, now, c) {
+  const tzp = tzParts(now, c.TIMEZONE);
+  const list = await env.DB
+    .prepare(
+      `SELECT s.id, s.name, s.start_min, s.end_min FROM shift_sups ss
+       JOIN shifts s ON s.id = ss.shift_id AND s.active = 1 WHERE ss.sup_id = ? ORDER BY s.start_min`
+    )
+    .bind(sup.id)
+    .all();
+  const shifts = [];
+  for (const s of (list && list.results) || []) {
+    const occ = pickOcc(now, tzp, s, 2 * HOUR);
+    if (!occ) continue;
+    const riders = await shiftRiders(env, s, occ, tzp);
+    const confirms = await shiftConfirms(env, s.id, occ.day);
+    shifts.push({
+      id: s.id, name: s.name, start: hhmm(s.start_min), end: hhmm(s.end_min),
+      day: occ.day, startAt: occ.startAt, endAt: occ.endAt, phase: occ.phase,
+      riders, counts: shiftCounts(riders, c.SHIFT_GRACE_MIN),
+      confirms: confirms.map((x) => ({ sup_id: x.sup_id, name: x.name, at: x.at, present: x.present, absent: x.absent })),
+      mine: confirms.some((x) => x.sup_id === sup.id),
+    });
+  }
+  return { ok: true, sup: { id: sup.id, name: sup.name }, now, grace: c.SHIFT_GRACE_MIN, shifts };
+}
+
+async function supMark(env, sup, body, now, c) {
+  const rid = String((body && body.rider_id) || "");
+  const status = body && body.status === "present" ? "present" : body && body.status === "absent" ? "absent" : null;
+  const found = await supShiftFor(env, sup, +body.shift_id, now, c);
+  if (!found) return fail("no_shift", "Shift not found", 404);
+  const riders = await shiftRiders(env, found.s, found.occ, found.tzp);
+  const r = riders.find((x) => x.id === rid && x.day === String(body.day) && x.slot === +body.slot);
+  if (!r) return fail("no_rider", "Rider is not in this shift", 404);
+  await env.DB
+    .prepare(
+      `INSERT INTO attendance (day, band_id, rider_id, start_min, sup_status, sup_id, sup_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+       ON CONFLICT(day, rider_id, start_min) DO UPDATE SET sup_status = excluded.sup_status, sup_id = excluded.sup_id,
+         sup_at = excluded.sup_at, band_id = excluded.band_id`
+    )
+    .bind(r.day, found.s.id, rid, r.slot, status, sup.id, now)
+    .run();
+  return json({ ok: true });
+}
+
+async function supConfirm(env, sup, body, now, c) {
+  const found = await supShiftFor(env, sup, +body.shift_id, now, c);
+  if (!found) return fail("no_shift", "Shift not found", 404);
+  const { s, occ, tzp } = found;
+  if (now < occ.startAt - c.SHIFT_LEAD_MIN * MIN) return fail("too_early", "The shift has not started yet", 409);
+  const riders = await shiftRiders(env, s, occ, tzp);
+  const pending = riders.filter((r) => r.status === "pending");
+  if (pending.length && !body.absent_pending) {
+    return json({ ok: false, code: "pending", pending: pending.map((r) => ({ id: r.id, name: r.name })) }, 409);
+  }
+  const stmts = pending.map((r) =>
+    env.DB
+      .prepare(
+        `INSERT INTO attendance (day, band_id, rider_id, start_min, sup_status, sup_id, sup_at) VALUES (?1, ?2, ?3, ?4, 'absent', ?5, ?6)
+         ON CONFLICT(day, rider_id, start_min) DO UPDATE SET sup_status = 'absent', sup_id = excluded.sup_id, sup_at = excluded.sup_at`
+      )
+      .bind(r.day, s.id, r.id, r.slot, sup.id, now)
+  );
+  const absent = riders.filter((r) => r.status === "absent").length + pending.length;
+  stmts.push(
+    env.DB
+      .prepare(`INSERT OR REPLACE INTO shift_confirm (day, shift_id, sup_id, at, present, absent) VALUES (?, ?, ?, ?, ?, ?)`)
+      .bind(occ.day, s.id, sup.id, now, riders.length - absent, absent)
+  );
+  await env.DB.batch(stmts);
+  return json({ ok: true });
+}
+
+/* ---- admin side ---- */
+async function adminShifts(env, now, c) {
+  await seedShifts(env);
+  const tzp = tzParts(now, c.TIMEZONE);
+  const [shiftRows, supRows, linkRows] = await Promise.all([
+    env.DB.prepare("SELECT id, name, start_min, end_min, active FROM shifts ORDER BY start_min, id").all(),
+    env.DB.prepare("SELECT id, name, code, active FROM supervisors ORDER BY name, id").all(),
+    env.DB.prepare("SELECT shift_id, sup_id FROM shift_sups").all(),
+  ]);
+  const links = (linkRows && linkRows.results) || [];
+  const shifts = [];
+  for (const s of (shiftRows && shiftRows.results) || []) {
+    const item = {
+      id: s.id, name: s.name, start: hhmm(s.start_min), end: hhmm(s.end_min), active: !!s.active,
+      sup_ids: links.filter((l) => l.shift_id === s.id).map((l) => l.sup_id),
+      rider_count: 0, occ: null, counts: null, confirms: [], riders: [],
+    };
+    const occ = s.active ? pickOcc(now, tzp, s, 2 * HOUR) : null;
+    if (occ) {
+      const riders = await shiftRiders(env, s, occ, tzp);
+      item.occ = occ;
+      item.riders = riders;
+      item.rider_count = riders.length;
+      item.counts = shiftCounts(riders, c.SHIFT_GRACE_MIN);
+      item.confirms = (await shiftConfirms(env, s.id, occ.day)).map((x) => ({ sup_id: x.sup_id, name: x.name, at: x.at }));
+    }
+    shifts.push(item);
+  }
+  const since = new Date(tzp.dayStart + tzp.offset - 6 * DAY).toISOString().slice(0, 10);
+  const [hist, hconf] = await Promise.all([
+    env.DB
+      .prepare(
+        `SELECT a.day, a.band_id AS shift_id, SUM(CASE WHEN ${PRESENT_SQL} THEN 1 ELSE 0 END) AS present,
+           SUM(CASE WHEN a.sup_status = 'absent' THEN 1 ELSE 0 END) AS absent, COUNT(*) AS touched
+         FROM attendance a WHERE a.day >= ? GROUP BY a.day, a.band_id ORDER BY a.day DESC`
+      )
+      .bind(since)
+      .all(),
+    env.DB.prepare("SELECT day, shift_id, COUNT(*) AS n FROM shift_confirm WHERE day >= ? GROUP BY day, shift_id").bind(since).all(),
+  ]);
+  return {
+    ok: true,
+    now,
+    grace: c.SHIFT_GRACE_MIN,
+    config: { lead: c.SHIFT_LEAD_MIN, nag: c.SHIFT_NAG_MIN },
+    shifts,
+    supervisors: ((supRows && supRows.results) || []).map((x) => ({ id: x.id, name: x.name, code: x.code, active: !!x.active })),
+    history: (hist && hist.results) || [],
+    history_confirms: (hconf && hconf.results) || [],
+  };
+}
+
+async function adminSaveShift(env, body) {
+  const id = body && body.id ? +body.id : 0;
+  if (body && body.delete) {
+    if (!id) return fail("bad_request", "Missing id", 400);
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM shift_sups WHERE shift_id = ?").bind(id),
+      env.DB.prepare("DELETE FROM shifts WHERE id = ?").bind(id),
+    ]);
+    return json({ ok: true });
+  }
+  const name = String((body && body.name) || "").trim().slice(0, 40);
+  const st = parseHHMM(body && body.start), en = parseHHMM(body && body.end);
+  if (!name || st === null || en === null || st === en) return fail("bad_request", "Name, start and end are required", 400);
+  const active = body.active === false ? 0 : 1;
+  let sid = id;
+  if (id) {
+    await env.DB.prepare("UPDATE shifts SET name = ?, start_min = ?, end_min = ?, active = ? WHERE id = ?").bind(name, st, en, active, id).run();
+  } else {
+    const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM shifts").first();
+    if (n && n.n >= 12) return fail("too_many", "Maximum 12 shifts", 400);
+    const r = await env.DB.prepare("INSERT INTO shifts (name, start_min, end_min, sort, active) VALUES (?, ?, ?, ?, ?)").bind(name, st, en, n ? n.n : 0, active).run();
+    sid = r.meta.last_row_id;
+  }
+  const sups = Array.isArray(body.sup_ids) ? [...new Set(body.sup_ids.map(Number).filter((x) => x > 0))].slice(0, 6) : [];
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM shift_sups WHERE shift_id = ?").bind(sid),
+    ...sups.map((u) => env.DB.prepare("INSERT OR IGNORE INTO shift_sups (shift_id, sup_id) VALUES (?, ?)").bind(sid, u)),
+  ]);
+  return json({ ok: true, id: sid });
+}
+
+async function adminSaveSupervisor(env, body) {
+  const id = body && body.id ? +body.id : 0;
+  if (body && body.delete) {
+    if (!id) return fail("bad_request", "Missing id", 400);
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM shift_sups WHERE sup_id = ?").bind(id),
+      env.DB.prepare("DELETE FROM supervisors WHERE id = ?").bind(id),
+    ]);
+    return json({ ok: true });
+  }
+  if (id && body.regen) {
+    await env.DB.prepare("UPDATE supervisors SET code = ? WHERE id = ?").bind(newCode(), id).run();
+    return json({ ok: true });
+  }
+  const name = String((body && body.name) || "").trim().slice(0, 60);
+  if (!name) return fail("bad_request", "Name is required", 400);
+  if (id) {
+    await env.DB.prepare("UPDATE supervisors SET name = ?, active = ? WHERE id = ?").bind(name, body.active === false ? 0 : 1, id).run();
+  } else {
+    await env.DB.prepare("INSERT INTO supervisors (name, code) VALUES (?, ?)").bind(name, newCode()).run();
+  }
+  return json({ ok: true });
+}
+
+/* ---------------------------- Incentives (editable cards) ---------------------------- */
+const DEFAULT_INCENTIVES = {
+  en: [
+    {
+      icon: "⭐", color: "#f59e0b",
+      title: "Incentive 1: Experience incentive",
+      intro: "Keeta values the customer experience of every order, so we encourage customer-centric performance with the incentive below.",
+      lines: [
+        "Your performance level is evaluated by the Valid Rider's rank among Valid Riders.",
+        "To enter the Rider Ranking pool you must complete at least 100 orders and keep your Cancellation Rate (D Liability) at or below 0.38%.",
+        "Only a valid DA is entitled to the Experience incentive.",
+      ],
+      formulas: [
+        "Total experience incentive = correlated amount of the performance level × number of DAs (only VDA) × rider attendance rate",
+        "Attendance rate = number of valid days of the rider ÷ 26 days",
+      ],
+      table: {
+        head: ["Performance level", "Rider rank (example, check the BOC for the exact distribution)", "Bike: per valid DA (SAR)", "Car: per valid DA (SAR)"],
+        rows: [["A", "0% - 25%", "1,200", "2,000"], ["B", "25% - 55%", "800", "1,500"], ["C", "55% - 90%", "400", "1,000"], ["D", "90% - 100%", "0", "0"]],
+      },
+      note: "Rank ranges are an example. The exact distribution is in the BOC.",
+    },
+  ],
+  ar: [
+    {
+      icon: "⭐", color: "#f59e0b",
+      title: "الحافز 1: حافز التجربة (Experience incentive)",
+      intro: "كيتا بتهتم بتجربة العميل في كل أوردر، ولهذا بنشجّع الأداء اللي يراعي العميل بالحافز ده.",
+      lines: [
+        "مستوى أدائك بيتحدد حسب ترتيب المندوب الصالح (Valid Rider) بين المناديب الصالحين.",
+        "عشان تدخل في ترتيب المناديب لازم تكمّل 100 أوردر على الأقل، ويكون معدل الإلغاء (D Liability) 0.38% أو أقل.",
+        "حافز التجربة للمندوب الصالح (Valid DA) فقط.",
+      ],
+      formulas: [
+        "إجمالي حافز التجربة = قيمة مستوى الأداء × عدد المناديب الصالحين (VDA فقط) × معدل حضور المندوب",
+        "معدل الحضور = عدد أيام المندوب الصالحة ÷ 26 يوم",
+      ],
+      table: {
+        head: ["مستوى الأداء", "ترتيب المندوب (مثال، راجع BOC للتوزيع الدقيق)", "دراجة: لكل مندوب صالح (ريال)", "سيارة: لكل مندوب صالح (ريال)"],
+        rows: [["A", "0% - 25%", "1,200", "2,000"], ["B", "25% - 55%", "800", "1,500"], ["C", "55% - 90%", "400", "1,000"], ["D", "90% - 100%", "0", "0"]],
+      },
+      note: "نطاقات الترتيب للتوضيح فقط. التوزيع الدقيق موجود في BOC.",
+    },
+  ],
+};
+
+function cleanCard(c) {
+  if (!c || typeof c !== "object") return null;
+  const s = (v, n) => String(v ?? "").slice(0, n);
+  const arr = (v, n, m) => (Array.isArray(v) ? v.map((x) => s(x, n).trim()).filter(Boolean).slice(0, m) : []);
+  const card = {
+    icon: s(c.icon, 8).trim() || "🎁",
+    color: /^#[0-9a-fA-F]{6}$/.test(c.color || "") ? c.color : "#f59e0b",
+    title: s(c.title, 140).trim(),
+    intro: s(c.intro, 700).trim(),
+    lines: arr(c.lines, 500, 30),
+    formulas: arr(c.formulas, 500, 10),
+    note: s(c.note, 500).trim(),
+    table: null,
+  };
+  if (c.table && Array.isArray(c.table.head) && Array.isArray(c.table.rows)) {
+    const head = c.table.head.map((x) => s(x, 90).trim()).slice(0, 8);
+    const rows = c.table.rows
+      .filter(Array.isArray)
+      .map((r) => r.map((x) => s(x, 80).trim()).slice(0, 8))
+      .filter((r) => r.some(Boolean))
+      .slice(0, 40);
+    if (head.some(Boolean) && rows.length) card.table = { head, rows };
+  }
+  return card.title || card.intro || card.lines.length || card.formulas.length || card.table ? card : null;
+}
+
+async function getIncentives(env) {
+  const out = {};
+  const custom = {};
+  for (const l of LANGS) out[l] = DEFAULT_INCENTIVES[l] ? JSON.parse(JSON.stringify(DEFAULT_INCENTIVES[l])) : null;
+  try {
+    const rows = await env.DB.prepare("SELECT key, value FROM settings WHERE key LIKE 'incentives_%'").all();
+    for (const r of (rows && rows.results) || []) {
+      const l = r.key.slice(11);
+      if (!LANGS.includes(l)) continue;
+      try {
+        const list = JSON.parse(r.value);
+        if (Array.isArray(list)) { out[l] = list.map(cleanCard).filter(Boolean); custom[l] = true; }
+      } catch { /* keep default */ }
+    }
+  } catch { /* settings table missing */ }
+  return { cards: out, custom };
+}
+
 /* ---------------------------- Routes ---------------------------- */
 export default {
   async fetch(request, env) {
@@ -1219,13 +1902,64 @@ export default {
       if (!device) return json({ ok: false }, 401);
       const rider = await env.DB.prepare("SELECT id, name FROM riders WHERE id = ?").bind(device.rider_id).first();
       const state = await riderState(env, device.rider_id, now);
+      const shift = await riderShift(env, device.rider_id, now, cfg(env));
       return json({
         ok: true,
         rider,
         lang: cleanLang(device.lang) || "ar",
         pushEnabled: !!device.push_enabled,
+        shift,
         ...state,
       });
+    }
+
+    if (path === "/api/shift/confirm" && request.method === "POST") {
+      const body = await readBody(request);
+      if (!body) return json({ ok: false }, 400);
+      const device = await getDevice(env, body.token);
+      if (!device) return fail("unauthorized", "Unauthorized", 401);
+      return riderConfirmShift(env, device, now);
+    }
+
+    if (path === "/api/schedule" && request.method === "POST") {
+      const body = await readBody(request);
+      if (!body) return json({ ok: false }, 400);
+      const device = await getDevice(env, body.token);
+      if (!device) return fail("unauthorized", "Unauthorized", 401);
+      try { return await riderSchedule(env, device, now, cfg(env)); } catch { return fail("not_ready", "Shifts are not set up yet", 503); }
+    }
+
+    if (path === "/api/schedule/save" && request.method === "POST") {
+      const body = await readBody(request);
+      if (!body) return json({ ok: false }, 400);
+      const device = await getDevice(env, body.token);
+      if (!device) return fail("unauthorized", "Unauthorized", 401);
+      try { return await riderSaveSchedule(env, device, body, now, cfg(env)); } catch { return fail("not_ready", "Shifts are not set up yet", 503); }
+    }
+
+    if (path === "/api/incentives" && request.method === "POST") {
+      const body = await readBody(request);
+      if (!body) return json({ ok: false }, 400);
+      const device = await getDevice(env, body.token);
+      if (!device) return fail("unauthorized", "Unauthorized", 401);
+      const { cards } = await getIncentives(env);
+      const lang = cleanLang(device.lang) || "ar";
+      const l = body.lang && LANGS.includes(body.lang) ? body.lang : lang;
+      const list = cards[l] && cards[l].length ? cards[l] : cards.en || [];
+      return json({ ok: true, lang: l, cards: list });
+    }
+
+    /* ---- Supervisor (personal code) ---- */
+    if (path.startsWith("/api/sup/") && request.method === "POST") {
+      const body = await readBody(request);
+      if (!body) return json({ ok: false }, 400);
+      const sup = await getSup(env, body.code);
+      if (!sup) return fail("bad_code", "Invalid code", 401);
+      const c = cfg(env);
+      if (path === "/api/sup/board") return json(await supBoard(env, sup, now, c));
+      if (path === "/api/sup/mark") return supMark(env, sup, body, now, c);
+      if (path === "/api/sup/confirm") return supConfirm(env, sup, body, now, c);
+      return fail("not_found", "Not found", 404);
     }
 
     if (path === "/api/lang" && request.method === "POST") {
@@ -1315,6 +2049,7 @@ export default {
       if (!device && body.endpoint) device = await getDeviceByEndpoint(env, body.endpoint);
       if (!device) return json({ ok: true, notice: buildNotice({ order: null, prompt: null }, "ar") });
       const state = await riderState(env, device.rider_id, now);
+      if (!state.order) state.shift = await riderShift(env, device.rider_id, now, cfg(env));
       return json({ ok: true, notice: buildNotice(state, cleanLang(device.lang) || "ar") });
     }
 
@@ -1400,6 +2135,38 @@ export default {
           .bind(data)
           .run();
         return json({ ok: true });
+      }
+      if (path === "/api/admin/shifts" && request.method === "GET") {
+        return json(await adminShifts(env, now, cfg(env)));
+      }
+      if (path === "/api/admin/shifts/save" && request.method === "POST") {
+        const body = await readBody(request);
+        if (!body) return json({ ok: false }, 400);
+        return adminSaveShift(env, body);
+      }
+      if (path === "/api/admin/supervisors/save" && request.method === "POST") {
+        const body = await readBody(request);
+        if (!body) return json({ ok: false }, 400);
+        return adminSaveSupervisor(env, body);
+      }
+      if (path === "/api/admin/incentives" && request.method === "GET") {
+        const { cards, custom } = await getIncentives(env);
+        return json({ ok: true, cards, custom, defaults: DEFAULT_INCENTIVES });
+      }
+      if (path === "/api/admin/incentives" && request.method === "POST") {
+        const body = await readBody(request);
+        const lang = body && body.lang;
+        if (!LANGS.includes(lang)) return fail("bad_request", "Unsupported language", 400);
+        if (body.reset) {
+          await env.DB.prepare("DELETE FROM settings WHERE key = ?").bind("incentives_" + lang).run();
+          return json({ ok: true });
+        }
+        const list = (Array.isArray(body.cards) ? body.cards : []).slice(0, 20).map(cleanCard).filter(Boolean);
+        await env.DB
+          .prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+          .bind("incentives_" + lang, JSON.stringify(list))
+          .run();
+        return json({ ok: true, count: list.length });
       }
       if (path === "/api/admin/riders" && request.method === "GET") {
         return json(await adminListRiders(env));
