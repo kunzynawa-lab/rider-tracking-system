@@ -1,1 +1,10 @@
+-- Run ONCE in D1 Console (rider-db): rider schedules, supervisors, attendance
+CREATE TABLE IF NOT EXISTS shifts (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, start_min INTEGER NOT NULL, end_min INTEGER NOT NULL, sort INTEGER DEFAULT 0, active INTEGER DEFAULT 1);
+CREATE TABLE IF NOT EXISTS supervisors (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, code TEXT NOT NULL UNIQUE, active INTEGER DEFAULT 1);
+CREATE TABLE IF NOT EXISTS shift_sups (shift_id INTEGER NOT NULL, sup_id INTEGER NOT NULL, PRIMARY KEY (shift_id, sup_id));
+CREATE TABLE IF NOT EXISTS rider_shifts (rider_id TEXT NOT NULL, day TEXT NOT NULL, start_min INTEGER NOT NULL, end_min INTEGER NOT NULL, PRIMARY KEY (rider_id, day, start_min));
+CREATE TABLE IF NOT EXISTS attendance (day TEXT NOT NULL, band_id INTEGER, rider_id TEXT NOT NULL, start_min INTEGER NOT NULL, rider_at INTEGER, sup_status TEXT, sup_id INTEGER, sup_at INTEGER, nags INTEGER DEFAULT 0, last_nag INTEGER, PRIMARY KEY (day, rider_id, start_min));
+CREATE TABLE IF NOT EXISTS shift_confirm (day TEXT NOT NULL, shift_id INTEGER NOT NULL, sup_id INTEGER NOT NULL, at INTEGER, present INTEGER, absent INTEGER, PRIMARY KEY (day, shift_id, sup_id));
+CREATE INDEX IF NOT EXISTS idx_rider_shifts_day ON rider_shifts(day);
+CREATE INDEX IF NOT EXISTS idx_attendance_band ON attendance(day, band_id);
 
