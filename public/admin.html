@@ -139,6 +139,30 @@
     dialog::backdrop { background: rgba(8,15,28,.55); }
     .toast { position: fixed; bottom: 20px; inset-inline-start: 50%; transform: translateX(-50%); background: #0f1b2d; color: #fff; padding: 10px 16px; border-radius: 10px; z-index: 50; }
 
+    /* shifts */
+    .shgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; margin-bottom: 18px; }
+    .shcard.alert { border-color: var(--red); }
+    .shcard .bd { padding: 14px 16px; display: grid; gap: 12px; }
+    .sups { display: flex; gap: 6px; flex-wrap: wrap; }
+    .stack-bar { display: flex; height: 10px; border-radius: 6px; overflow: hidden; background: var(--idle-soft); }
+    .stack-bar i { display: block; height: 100%; }
+    .cnts { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; }
+    .cnts b { font-size: 16px; }
+    .rl { border-top: 1px solid var(--line); margin: 0 -16px -14px; max-height: 320px; overflow: auto; }
+    .rl table th, .rl table td { padding: 7px 14px; white-space: normal; }
+    .h2row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 6px 0 10px; flex-wrap: wrap; }
+    .code { font: 700 14px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: 1.5px; background: var(--bg); border: 1px dashed var(--line); padding: 5px 8px; border-radius: 8px; direction: ltr; display: inline-block; }
+    .check { display: flex; gap: 8px; align-items: center; padding: 6px 0; font-weight: 600; }
+    .check input { width: auto; }
+    /* incentives editor */
+    .icard { padding: 16px; margin-bottom: 14px; display: grid; gap: 10px; }
+    .icard .top { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+    .icard .two { display: grid; grid-template-columns: 90px 90px 1fr; gap: 10px; }
+    .icard label > span { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 3px; }
+    .icard input[type=color] { padding: 2px; height: 42px; }
+    .icard textarea { font-family: inherit; }
+    .icard textarea.mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
+
     @media (max-width: 1180px) { .grid2 { grid-template-columns: 1fr; } }
     @media (max-width: 960px) {
       #app { grid-template-columns: 1fr; }
@@ -173,6 +197,8 @@
         <button data-page="reports">📊 <span data-i="navReports"></span></button>
         <button data-page="riders">👥 <span data-i="navRiders"></span></button>
         <button data-page="performance">🏆 <span data-i="navPerf"></span></button>
+        <button data-page="shifts">🗓️ <span data-i="navShifts"></span></button>
+        <button data-page="incentives">🎁 <span data-i="navInc"></span></button>
       </nav>
       <div class="side-foot">
         <div class="seg" id="langSeg"><button data-lang="en" aria-pressed="true">EN</button><button data-lang="ar" aria-pressed="false">عربي</button></div>
@@ -304,8 +330,59 @@
           </div>
         </div>
       </section>
+      <section id="pg-shifts" class="hidden">
+        <div class="head">
+          <div><h1 data-i="shTitle"></h1><div class="sub" id="shSub"></div></div>
+          <button class="btn ghost sm" id="shRefresh" data-i="refresh"></button>
+        </div>
+        <p class="muted" style="margin:-8px 0 14px" id="shHelp"></p>
+        <div id="shAlerts"></div>
+        <div class="h2row"><h2 style="font-size:17px" data-i="shToday"></h2></div>
+        <div class="shgrid" id="shGrid"></div>
+
+        <div class="h2row"><h2 style="font-size:17px" data-i="shSetup"></h2><button class="btn sm" id="shAddBtn" data-i="shAdd"></button></div>
+        <div class="card" style="margin-bottom:16px"><div class="scroll" style="max-height:none"><table><thead><tr id="shHead"></tr></thead><tbody id="shBody"></tbody></table></div></div>
+
+        <div class="h2row"><h2 style="font-size:17px" data-i="supTitle"></h2>
+          <form id="supForm" style="display:flex;gap:8px"><input id="supName" style="width:220px" data-ph="supName"><button class="btn sm" type="submit" data-i="supAdd"></button></form></div>
+        <div class="card" style="margin-bottom:16px"><div class="scroll" style="max-height:none"><table><thead><tr id="supHead"></tr></thead><tbody id="supBody"></tbody></table></div></div>
+
+        <div class="h2row"><h2 style="font-size:17px" data-i="shHist"></h2></div>
+        <div class="card"><div class="scroll" style="max-height:360px"><table><thead><tr id="hiHead"></tr></thead><tbody id="hiBody"></tbody></table></div></div>
+      </section>
+
+      <section id="pg-incentives" class="hidden">
+        <div class="head">
+          <div><h1 data-i="incTitle"></h1><div class="sub" data-i="incHelp"></div></div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><div class="chips" id="incLangs"></div><span class="badge b-idle hidden" id="incCustom" data-i="customized"></span></div>
+        </div>
+        <div id="incList"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn ghost" id="incAddCard" data-i="incAddCard"></button>
+          <button class="btn" id="incSave" data-i="incSave"></button>
+          <button class="btn ghost" id="incCopyEn" data-i="incCopyEn"></button>
+          <button class="btn ghost" id="incReset" data-i="incReset"></button>
+        </div>
+      </section>
     </main>
   </div>
+
+  <dialog id="shiftDlg">
+    <form method="dialog" id="shiftForm">
+      <h2 style="font-size:18px;margin-bottom:12px" id="shDlgTitle"></h2>
+      <div style="display:grid;gap:10px">
+        <label><span class="muted" data-i="shName"></span><input id="shfName" maxlength="40"></label>
+        <div style="display:flex;gap:10px"><label style="flex:1"><span class="muted" data-i="shStart"></span><input id="shfStart" type="time" required></label><label style="flex:1"><span class="muted" data-i="shEnd"></span><input id="shfEnd" type="time" required></label></div>
+        <div><span class="muted" data-i="shSups"></span><div id="shfSups"></div></div>
+        <label class="check"><input type="checkbox" id="shfActive"><span data-i="shActive"></span></label>
+      </div>
+      <div class="err" id="shfErr" role="alert"></div>
+      <div style="display:flex;gap:8px;justify-content:space-between;margin-top:10px">
+        <button type="button" class="btn ghost" id="shfDelete" data-i="delete"></button>
+        <span style="display:flex;gap:8px"><button type="button" class="btn ghost" id="shfCancel" data-i="cancel"></button><button type="submit" class="btn" data-i="save"></button></span>
+      </div>
+    </form>
+  </dialog>
 
   <dialog id="addDlg">
     <form method="dialog" id="addForm">
@@ -409,6 +486,55 @@
     },
   };
 
+  Object.assign(I18N.en, {
+    navShifts: "Shifts", navInc: "Incentives", refresh: "Refresh", edit: "Edit", delete: "Delete", yes: "Yes",
+    shTitle: "Shifts & attendance", shSub: "{t} · {n} supervisors", shHelp: "Each rider sets his own shifts (up to 3 a day) in the app. He gets a reminder {l} min before each shift and then every {e} min until he confirms he started. A rider is supervised by the window below that contains his shift start; its supervisors must confirm attendance.",
+    shToday: "Today's shifts", shSetup: "Supervision windows", shAdd: "Add window", supTitle: "Supervisors", supAdd: "Add supervisor", supName: "Supervisor name", shHist: "Last 7 days",
+    ph_later: "Later", ph_before: "Starts in {n}", ph_running: "Running", ph_off: "Inactive", ph_notconf: "Not confirmed by a supervisor",
+    sup_ok: "{n} confirmed · {t}", sup_wait: "{n}: waiting", sup_none: "No supervisor assigned",
+    c_present: "Present", c_absent: "Absent", c_pending: "Not confirmed", c_late: "Late",
+    s_riders: "Riders", noShiftRiders: "No rider has a shift starting in this window today.", showRiders: "Riders",
+    sh_col_name: "Shift", sh_col_time: "Time", sh_col_sups: "Supervisors", sh_col_riders: "Riders", sh_col_active: "Status",
+    sup_col_name: "Name", sup_col_code: "Access code", sup_col_shifts: "Shifts", sup_col_status: "Status",
+    shDlgNew: "New shift", shDlgEdit: "Edit shift", shName: "Shift name", shStart: "Start", shEnd: "End", shSups: "Supervisors (usually 2)", shActive: "Active",
+    shSaved: "Saved.", shDeleteQ: "Delete this shift? Its riders will become unassigned.", shBad: "Enter a name and different start and end times.",
+    supCopy: "Copy invite", supCopied: "Invite copied.", supRegen: "New code", supRegenQ: "Generate a new code? The old one stops working.", supDeleteQ: "Delete this supervisor?",
+    supInvite: "Supervisor page: {u}\nYour code: {c}", noSups: "No supervisors yet.", noShifts: "No shifts.",
+    hi_day: "Day", hi_shift: "Shift", hi_present: "Present", hi_absent: "Absent", hi_conf: "Supervisor confirmations", noHist: "No attendance recorded yet.",
+    r_in_time: "on time", r_late_n: "{n} min late", r_notyet: "not confirmed", r_noapp: "app not opened", r_nopush: "notifications off", by_rider: "by rider", by_sup: "by supervisor",
+    alertNoConf: "{n}: no supervisor has confirmed attendance yet.", alertPend: "{n}: {p} riders have not confirmed.",
+    m_shift: "Shift", noShift: "None", shiftSet: "Shift updated.",
+    incTitle: "Incentives", incHelp: "Cards shown to riders in the Incentives tab. If a language has no cards, riders see the English ones.",
+    incSave: "Save", incReset: "Reset to default", incAddCard: "Add card", incCopyEn: "Copy English cards here", incSaved: "Saved.", incResetDone: "Restored the default cards.", incResetQ: "Restore the default cards for this language?", incCopyQ: "Replace the cards in this language with the English ones?",
+    fi_icon: "Icon", fi_color: "Colour", fi_title: "Title", fi_intro: "Intro", fi_lines: "Bullet points (one per line)", fi_formulas: "Formulas (one per line)", fi_table: "Table: one row per line, cells separated by |, first line is the header", fi_note: "Note",
+    cardN: "Card {n}", up: "Up", down: "Down", delCard: "Delete card", delCardQ: "Delete this card?", incEmpty: "No cards in this language yet.",
+    addHelp2: "Upload an Excel/CSV file (column 1 = ID, column 2 = name, column 3 = shift name or number, optional), or paste from Excel, or type one rider per line: ID, name, shift. Only riders added here can open the app.",
+  });
+  Object.assign(I18N.ar, {
+    navShifts: "الشيفتات", navInc: "الحوافز", refresh: "تحديث", edit: "تعديل", delete: "حذف", yes: "نعم",
+    shTitle: "الشيفتات والحضور", shSub: "{t} · {n} مشرف", shHelp: "كل مندوب يحدد شيفتاته بنفسه (حتى 3 في اليوم) من التطبيق، ويصله تنبيه قبل كل شيفت بـ {l} دقيقة ثم كل {e} دقائق حتى يؤكد أنه بدأ. يتبع المندوب النافذة بالأسفل التي تحتوي على وقت بداية شيفته، ويجب على مشرفيها تأكيد الحضور.",
+    shToday: "شيفتات اليوم", shSetup: "نوافذ الإشراف", shAdd: "إضافة نافذة", supTitle: "المشرفون", supAdd: "إضافة مشرف", supName: "اسم المشرف", shHist: "آخر 7 أيام",
+    ph_later: "لاحقاً", ph_before: "يبدأ بعد {n}", ph_running: "شغال", ph_off: "متوقف", ph_notconf: "لم يؤكده أي مشرف",
+    sup_ok: "{n} أكّد · {t}", sup_wait: "{n}: لم يؤكد", sup_none: "لا يوجد مشرف",
+    c_present: "حاضر", c_absent: "غائب", c_pending: "لم يؤكد", c_late: "متأخر",
+    s_riders: "المناديب", noShiftRiders: "لا يوجد مندوب يبدأ شيفته في هذه النافذة اليوم.", showRiders: "المناديب",
+    sh_col_name: "الشيفت", sh_col_time: "الوقت", sh_col_sups: "المشرفون", sh_col_riders: "المناديب", sh_col_active: "الحالة",
+    sup_col_name: "الاسم", sup_col_code: "كود الدخول", sup_col_shifts: "الشيفتات", sup_col_status: "الحالة",
+    shDlgNew: "شيفت جديد", shDlgEdit: "تعديل الشيفت", shName: "اسم الشيفت", shStart: "البداية", shEnd: "النهاية", shSups: "المشرفون (عادةً 2)", shActive: "نشط",
+    shSaved: "تم الحفظ.", shDeleteQ: "حذف هذا الشيفت؟ سيصبح مناديبه بلا شيفت.", shBad: "اكتب الاسم ووقت بداية ونهاية مختلفين.",
+    supCopy: "نسخ الدعوة", supCopied: "تم نسخ الدعوة.", supRegen: "كود جديد", supRegenQ: "إنشاء كود جديد؟ الكود القديم سيتوقف.", supDeleteQ: "حذف هذا المشرف؟",
+    supInvite: "صفحة المشرف: {u}\nالكود الخاص بك: {c}", noSups: "لا يوجد مشرفون بعد.", noShifts: "لا توجد شيفتات.",
+    hi_day: "اليوم", hi_shift: "الشيفت", hi_present: "حاضر", hi_absent: "غائب", hi_conf: "تأكيدات المشرفين", noHist: "لا يوجد حضور مسجّل بعد.",
+    r_in_time: "في الوقت", r_late_n: "متأخر {n} د", r_notyet: "لم يؤكد", r_noapp: "لم يفتح التطبيق", r_nopush: "الإشعارات متوقفة", by_rider: "من المندوب", by_sup: "من المشرف",
+    alertNoConf: "{n}: لم يؤكد أي مشرف الحضور حتى الآن.", alertPend: "{n}: {p} مندوب لم يؤكدوا.",
+    m_shift: "الشيفت", noShift: "بدون", shiftSet: "تم تحديث الشيفت.",
+    incTitle: "الحوافز", incHelp: "الكروت التي تظهر للمناديب في تاب الحوافز. إن لم توجد كروت للغة ما يرون الإنجليزية.",
+    incSave: "حفظ", incReset: "إعادة الافتراضي", incAddCard: "إضافة كارت", incCopyEn: "نسخ كروت الإنجليزية هنا", incSaved: "تم الحفظ.", incResetDone: "تمت استعادة الكروت الافتراضية.", incResetQ: "استعادة الكروت الافتراضية لهذه اللغة؟", incCopyQ: "استبدال كروت هذه اللغة بكروت الإنجليزية؟",
+    fi_icon: "الأيقونة", fi_color: "اللون", fi_title: "العنوان", fi_intro: "المقدمة", fi_lines: "النقاط (سطر لكل نقطة)", fi_formulas: "المعادلات (سطر لكل معادلة)", fi_table: "الجدول: صف في كل سطر، الخلايا مفصولة بـ |، والسطر الأول هو العناوين", fi_note: "ملاحظة",
+    cardN: "كارت {n}", up: "أعلى", down: "أسفل", delCard: "حذف الكارت", delCardQ: "حذف هذا الكارت؟", incEmpty: "لا توجد كروت بهذه اللغة بعد.",
+    addHelp2: "ارفع ملف Excel/CSV (العمود 1 = الرقم، 2 = الاسم، 3 = اسم الشيفت أو رقمه، اختياري)، أو الصق من Excel، أو اكتب مندوباً في كل سطر: الرقم، الاسم، الشيفت. فقط المناديب المضافون هنا يستطيعون فتح التطبيق.",
+  });
+
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const ls = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} }, del(k) { try { localStorage.removeItem(k); } catch {} } };
@@ -472,12 +598,14 @@
 
   function go(p) {
     page = p;
-    ["live", "reports", "riders", "performance"].forEach((x) => $("pg-" + x).classList.toggle("hidden", x !== p));
+    ["live", "reports", "riders", "performance", "shifts", "incentives"].forEach((x) => $("pg-" + x).classList.toggle("hidden", x !== p));
     document.querySelectorAll("#nav button").forEach((b) => (b.dataset.page === p ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current")));
     if (p === "live") { loadLive(); setTimeout(() => map && map.invalidateSize(), 50); }
     if (p === "reports") loadReport();
     if (p === "riders") loadRiders();
     if (p === "performance") initPerf();
+    if (p === "shifts") loadShifts();
+    if (p === "incentives") loadInc();
   }
   document.querySelectorAll("#nav button").forEach((b) => b.addEventListener("click", () => go(b.dataset.page)));
 
@@ -823,14 +951,14 @@
     if (!riders.length) { $("addErr").textContent = T("nothing"); return; }
     $("addSave").disabled = true;
     try {
-      const r = { added: 0, existing: 0, invalid: 0 };
+      const r = { added: 0, existing: 0, invalid: 0, assigned: 0 };
       for (let i = 0; i < riders.length; i += 200) {
         const part = await api("/api/admin/riders", { method: "POST", body: JSON.stringify({ riders: riders.slice(i, i + 200) }) });
         r.added += part.added; r.existing += part.existing; r.invalid += part.invalid;
       }
       $("addDlg").close();
       $("addText").value = ""; $("addCount").textContent = "";
-      toast(T("added", { a: r.added, e: r.existing, i: r.invalid ? T("invalidN", { n: r.invalid }) : "" }));
+      toast(T("added", { a: r.added, e: r.existing, i: (r.invalid ? T("invalidN", { n: r.invalid }) : "") }));
       loadRiders();
     } catch (err) {
       if (err.code === "key" || err.code === "missing") { $("addDlg").close(); handleErr(err); }
@@ -1075,19 +1203,224 @@
     try { await api("/api/admin/tips-image", { method: "POST", body: JSON.stringify({ remove: true }) }); toast(T("imgRemoved")); loadTips(); } catch (err) { handleErr(err); }
   });
 
+  /* ===================== Shifts & supervisors ===================== */
+  let shiftsData = null;
+  const openRiders = new Set();
+  const cp = (text) => { try { return navigator.clipboard.writeText(text); } catch { return Promise.reject(); } };
+  const ymd = (ms) => new Date(ms).toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short" });
+
+  async function loadShifts() {
+    try { shiftsData = await api("/api/admin/shifts"); renderShifts(); } catch (e) { handleErr(e); }
+  }
+  function phaseOf(s, now) {
+    const o = s.occ;
+    if (!s.active) return { cls: "b-idle", text: T("ph_off") };
+    if (!o) return { cls: "b-idle", text: T("ph_later") };
+    if (o.phase === "upcoming") return { cls: "b-idle", text: T("ph_later") };
+    if (o.phase === "before") return { cls: "b-declared", text: T("ph_before", { n: dur(o.startAt - now) }) };
+    return { cls: "b-green", text: T("ph_running") };
+  }
+  function riderRow(r, grace) {
+    const st = r.status === "present" ? `<span class="badge b-green">${esc(T("c_present"))}</span>` : r.status === "absent" ? `<span class="badge b-late">${esc(T("c_absent"))}</span>` : `<span class="badge b-declared">${esc(T("r_notyet"))}</span>`;
+    const bits = [];
+    if (r.rider_at) bits.push(hhmm(r.rider_at) + (r.late_min >= grace ? " · " + T("r_late_n", { n: r.late_min }) : ""));
+    if (r.by) bits.push(T(r.by === "supervisor" ? "by_sup" : "by_rider"));
+    if (!r.app) bits.push(T("r_noapp")); else if (!r.push) bits.push(T("r_nopush"));
+    return `<tr><td><span class="rname">${esc(r.name || r.id)}</span> <span class="rid">#${esc(r.id)}</span></td><td>${st}</td><td class="muted">${esc(bits.join(" · "))}</td></tr>`;
+  }
+  function renderShifts() {
+    const d = shiftsData;
+    if (!d) return;
+    const now = d.now;
+    const nameOf = new Map(d.supervisors.map((x) => [x.id, x.name]));
+    const today = new Date(now).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", { weekday: "long", day: "numeric", month: "long" });
+    $("shSub").textContent = T("shSub", { t: today, n: d.supervisors.filter((x) => x.active).length });
+    $("shHelp").textContent = T("shHelp", { l: d.config.lead, e: d.config.nag });
+
+    const alerts = [];
+    $("shGrid").innerHTML = d.shifts.length ? d.shifts.map((s) => {
+      const ph = phaseOf(s, now), c = s.counts;
+      const o = s.occ;
+      const running = o && o.phase === "running";
+      const unconf = running && !s.confirms.length && now > o.startAt + 10 * 60000;
+      if (unconf) alerts.push(T("alertNoConf", { n: s.name }));
+      else if (running && c && c.pending > 0 && now > o.startAt + 15 * 60000) alerts.push(T("alertPend", { n: s.name, p: c.pending }));
+      const sups = s.sup_ids.length ? s.sup_ids.map((id) => {
+        const cf = s.confirms.find((x) => x.sup_id === id);
+        return cf ? `<span class="badge b-green">✅ ${esc(T("sup_ok", { n: nameOf.get(id) || "?", t: hhmm(cf.at) }))}</span>` : `<span class="badge ${unconf ? "b-late" : "b-idle"}">⏳ ${esc(T("sup_wait", { n: nameOf.get(id) || "?" }))}</span>`;
+      }).join("") : `<span class="muted">${esc(T("sup_none"))}</span>`;
+      let body = "";
+      if (c && c.total) {
+        const w = (n) => (n / c.total * 100).toFixed(1) + "%";
+        const ontime = c.present - c.late;
+        body = `<div class="stack-bar"><i style="width:${w(ontime)};background:var(--green)"></i><i style="width:${w(c.late)};background:var(--amber)"></i><i style="width:${w(c.absent)};background:var(--red)"></i></div>
+          <div class="cnts"><span><b class="sev-ok">${c.present}</b> ${esc(T("c_present"))}</span><span><b class="sev-mid">${c.late}</b> ${esc(T("c_late"))}</span><span><b class="sev-hi">${c.absent}</b> ${esc(T("c_absent"))}</span><span><b>${c.pending}</b> ${esc(T("c_pending"))}</span></div>`;
+      } else {
+        body = `<div class="muted">${esc(T("noShiftRiders"))}</div>`;
+      }
+      const isOpen = openRiders.has(s.id);
+      const list = isOpen && s.riders.length ? `<div class="rl"><table><tbody>${s.riders.map((r) => riderRow(r, d.grace)).join("")}</tbody></table></div>` : "";
+      return `<div class="card shcard${unconf ? " alert" : ""}"><header><div><h2>${esc(s.name)}</h2><div class="muted num">${esc(s.start)} – ${esc(s.end)}</div></div><span class="badge ${unconf ? "b-late" : ph.cls}">${esc(unconf ? T("ph_notconf") : ph.text)}</span></header>
+        <div class="bd"><div class="sups">${sups}</div>${body}
+        ${s.riders.length ? `<div><button class="btn ghost sm" data-rl="${s.id}">${esc(T("showRiders"))} (${s.riders.length}) ${isOpen ? "▴" : "▾"}</button></div>` : ""}${list}</div></div>`;
+    }).join("") : `<div class="card empty">${esc(T("noShifts"))}</div>`;
+    $("shAlerts").innerHTML = alerts.map((a) => `<div class="card" style="padding:10px 14px;margin-bottom:8px;border-color:var(--red);background:var(--red-soft)">⚠️ ${esc(a)}</div>`).join("");
+    $("shGrid").querySelectorAll("[data-rl]").forEach((b) => b.addEventListener("click", () => { const id = +b.dataset.rl; openRiders.has(id) ? openRiders.delete(id) : openRiders.add(id); renderShifts(); }));
+
+    // setup: shifts
+    $("shHead").innerHTML = ["sh_col_name", "sh_col_time", "sh_col_sups", "sh_col_riders", "sh_col_active", ""].map((k) => `<th>${k ? esc(T(k)) : ""}</th>`).join("");
+    $("shBody").innerHTML = d.shifts.map((s) => `<tr><td class="rname">${esc(s.name)}</td><td class="num">${esc(s.start)} – ${esc(s.end)}</td><td>${esc(s.sup_ids.map((i) => nameOf.get(i)).filter(Boolean).join(", ") || "–")}</td><td class="num">${s.rider_count}</td>
+      <td><span class="badge ${s.active ? "b-green" : "b-idle"}">${esc(T(s.active ? "active" : "inactive"))}</span></td><td><button class="btn ghost sm" data-edit="${s.id}">${esc(T("edit"))}</button></td></tr>`).join("");
+    $("shBody").querySelectorAll("[data-edit]").forEach((b) => b.addEventListener("click", () => openShiftDlg(d.shifts.find((x) => x.id === +b.dataset.edit))));
+
+    // setup: supervisors
+    $("supHead").innerHTML = ["sup_col_name", "sup_col_code", "sup_col_shifts", "sup_col_status", ""].map((k) => `<th>${k ? esc(T(k)) : ""}</th>`).join("");
+    $("supBody").innerHTML = d.supervisors.length ? d.supervisors.map((u) => `<tr><td class="rname">${esc(u.name)}</td><td><span class="code">${esc(u.code)}</span></td>
+      <td>${esc(d.shifts.filter((s) => s.sup_ids.includes(u.id)).map((s) => s.name).join(", ") || "–")}</td>
+      <td><span class="badge ${u.active ? "b-green" : "b-idle"}">${esc(T(u.active ? "active" : "inactive"))}</span></td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn ghost sm" data-cp="${u.id}">${esc(T("supCopy"))}</button><button class="btn ghost sm" data-rg="${u.id}">${esc(T("supRegen"))}</button><button class="btn ghost sm" data-tg="${u.id}">${esc(T(u.active ? "deactivate" : "activate"))}</button><button class="btn ghost sm" data-dl="${u.id}">${esc(T("delete"))}</button></td></tr>`).join("")
+      : `<tr><td colspan="5" class="empty">${esc(T("noSups"))}</td></tr>`;
+    const sup = (b, k) => d.supervisors.find((x) => x.id === +b.dataset[k]);
+    $("supBody").querySelectorAll("[data-cp]").forEach((b) => b.addEventListener("click", () => {
+      const u = sup(b, "cp");
+      cp(T("supInvite", { u: location.origin + "/sup", c: u.code })).then(() => toast(T("supCopied")), () => prompt("", T("supInvite", { u: location.origin + "/sup", c: u.code })));
+    }));
+    $("supBody").querySelectorAll("[data-rg]").forEach((b) => b.addEventListener("click", async () => {
+      if (!confirm(T("supRegenQ"))) return;
+      try { await api("/api/admin/supervisors/save", { method: "POST", body: JSON.stringify({ id: +b.dataset.rg, regen: true }) }); loadShifts(); } catch (e) { handleErr(e); }
+    }));
+    $("supBody").querySelectorAll("[data-tg]").forEach((b) => b.addEventListener("click", async () => {
+      const u = sup(b, "tg");
+      try { await api("/api/admin/supervisors/save", { method: "POST", body: JSON.stringify({ id: u.id, name: u.name, active: !u.active }) }); loadShifts(); } catch (e) { handleErr(e); }
+    }));
+    $("supBody").querySelectorAll("[data-dl]").forEach((b) => b.addEventListener("click", async () => {
+      if (!confirm(T("supDeleteQ"))) return;
+      try { await api("/api/admin/supervisors/save", { method: "POST", body: JSON.stringify({ id: +b.dataset.dl, delete: true }) }); loadShifts(); } catch (e) { handleErr(e); }
+    }));
+
+    // history
+    $("hiHead").innerHTML = ["hi_day", "hi_shift", "hi_present", "hi_absent", "hi_conf"].map((k) => `<th>${esc(T(k))}</th>`).join("");
+    const shName = new Map(d.shifts.map((s) => [s.id, s.name]));
+    const confN = new Map(d.history_confirms.map((x) => [x.day + "|" + x.shift_id, x.n]));
+    $("hiBody").innerHTML = d.history.length ? d.history.map((h) => `<tr><td class="num">${esc(h.day)}</td><td>${esc(shName.get(h.shift_id) || "#" + h.shift_id)}</td><td class="num">${h.present}</td><td class="num">${h.absent}</td><td class="num">${confN.get(h.day + "|" + h.shift_id) || 0}</td></tr>`).join("")
+      : `<tr><td colspan="5" class="empty">${esc(T("noHist"))}</td></tr>`;
+  }
+  $("shRefresh").addEventListener("click", loadShifts);
+
+  let editShiftId = 0;
+  function openShiftDlg(s) {
+    editShiftId = s ? s.id : 0;
+    $("shDlgTitle").textContent = T(s ? "shDlgEdit" : "shDlgNew");
+    $("shfName").value = s ? s.name : "";
+    $("shfStart").value = s ? s.start : "";
+    $("shfEnd").value = s ? s.end : "";
+    $("shfActive").checked = s ? s.active : true;
+    $("shfDelete").classList.toggle("hidden", !s);
+    $("shfErr").textContent = "";
+    const ids = new Set(s ? s.sup_ids : []);
+    $("shfSups").innerHTML = ((shiftsData && shiftsData.supervisors) || []).filter((u) => u.active || ids.has(u.id)).map((u) => `<label class="check"><input type="checkbox" value="${u.id}" ${ids.has(u.id) ? "checked" : ""}><span>${esc(u.name)}</span></label>`).join("") || `<div class="muted">${esc(T("noSups"))}</div>`;
+    $("shiftDlg").showModal();
+  }
+  $("shAddBtn").addEventListener("click", () => openShiftDlg(null));
+  $("shfCancel").addEventListener("click", () => $("shiftDlg").close());
+  $("shiftForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const sup_ids = [...$("shfSups").querySelectorAll("input:checked")].map((i) => +i.value);
+    if (!$("shfName").value.trim() || !$("shfStart").value || !$("shfEnd").value || $("shfStart").value === $("shfEnd").value) { $("shfErr").textContent = T("shBad"); return; }
+    try {
+      await api("/api/admin/shifts/save", { method: "POST", body: JSON.stringify({ id: editShiftId, name: $("shfName").value, start: $("shfStart").value, end: $("shfEnd").value, active: $("shfActive").checked, sup_ids }) });
+      $("shiftDlg").close(); toast(T("shSaved")); loadShifts();
+    } catch (err) { if (err.code === "key" || err.code === "missing") { $("shiftDlg").close(); handleErr(err); } else $("shfErr").textContent = err.message; }
+  });
+  $("shfDelete").addEventListener("click", async () => {
+    if (!confirm(T("shDeleteQ"))) return;
+    try { await api("/api/admin/shifts/save", { method: "POST", body: JSON.stringify({ id: editShiftId, delete: true }) }); $("shiftDlg").close(); loadShifts(); } catch (e) { handleErr(e); }
+  });
+  $("supForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = $("supName").value.trim();
+    if (!name) return;
+    try { await api("/api/admin/supervisors/save", { method: "POST", body: JSON.stringify({ name }) }); $("supName").value = ""; loadShifts(); } catch (err) { handleErr(err); }
+  });
+
+  /* ===================== Incentives editor ===================== */
+  let incData = null, incLang = "en";
+  const incDraft = {};
+  const tableToText = (t) => (t && t.head ? [t.head, ...t.rows].map((r) => r.join(" | ")).join("\n") : "");
+  const textToTable = (txt) => {
+    const rows = String(txt || "").split(/\r?\n/).map((l) => l.split("|").map((x) => x.trim())).filter((r) => r.some(Boolean));
+    return rows.length >= 2 ? { head: rows[0], rows: rows.slice(1) } : null;
+  };
+  const lines = (txt) => String(txt || "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+
+  async function loadInc() {
+    try { incData = await api("/api/admin/incentives"); Object.keys(incDraft).forEach((k) => delete incDraft[k]); renderInc(); } catch (e) { handleErr(e); }
+  }
+  function collectInc() {
+    if (!incData) return;
+    const boxes = [...$("incList").querySelectorAll(".icard")];
+    if (!boxes.length && !$("incList").dataset.has) return;
+    incDraft[incLang] = boxes.map((b) => {
+      const g = (k) => b.querySelector(`[data-f="${k}"]`).value;
+      return { icon: g("icon"), color: g("color"), title: g("title"), intro: g("intro"), lines: lines(g("lines")), formulas: lines(g("formulas")), table: textToTable(g("table")), note: g("note") };
+    });
+  }
+  function renderInc() {
+    if (!incData) return;
+    $("incLangs").innerHTML = ["en", "ar", "ur", "bn"].map((l) => `<button class="chip" data-l="${l}" aria-pressed="${l === incLang}">${{ en: "English", ar: "العربية", ur: "اردو", bn: "বাংলা" }[l]}</button>`).join("");
+    $("incLangs").querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => { collectInc(); incLang = b.dataset.l; renderInc(); }));
+    $("incCustom").classList.toggle("hidden", !incData.custom[incLang]);
+    $("incCopyEn").classList.toggle("hidden", incLang === "en");
+    const cards = incDraft[incLang] || (incDraft[incLang] = JSON.parse(JSON.stringify(incData.cards[incLang] || [])));
+    const rtl = incLang === "ar" || incLang === "ur";
+    $("incList").dataset.has = "1";
+    $("incList").innerHTML = cards.length ? cards.map((c, i) => `<div class="card icard" data-ix="${i}">
+      <div class="top"><h2>${esc(T("cardN", { n: i + 1 }))}</h2><div style="display:flex;gap:6px"><button class="btn ghost sm" data-a="up">▲ ${esc(T("up"))}</button><button class="btn ghost sm" data-a="down">▼ ${esc(T("down"))}</button><button class="btn ghost sm" data-a="del">${esc(T("delCard"))}</button></div></div>
+      <div class="two"><label><span>${esc(T("fi_icon"))}</span><input data-f="icon" value="${esc(c.icon)}" maxlength="8" style="text-align:center"></label><label><span>${esc(T("fi_color"))}</span><input data-f="color" type="color" value="${esc(/^#[0-9a-fA-F]{6}$/.test(c.color || "") ? c.color : "#f59e0b")}"></label><label><span>${esc(T("fi_title"))}</span><input data-f="title" dir="${rtl ? "rtl" : "ltr"}" value="${esc(c.title)}"></label></div>
+      <label><span>${esc(T("fi_intro"))}</span><textarea data-f="intro" rows="2" dir="${rtl ? "rtl" : "ltr"}">${esc(c.intro)}</textarea></label>
+      <label><span>${esc(T("fi_lines"))}</span><textarea data-f="lines" rows="4" dir="${rtl ? "rtl" : "ltr"}">${esc((c.lines || []).join("\n"))}</textarea></label>
+      <label><span>${esc(T("fi_formulas"))}</span><textarea data-f="formulas" rows="3" dir="${rtl ? "rtl" : "ltr"}">${esc((c.formulas || []).join("\n"))}</textarea></label>
+      <label><span>${esc(T("fi_table"))}</span><textarea data-f="table" class="mono" rows="6" dir="${rtl ? "rtl" : "ltr"}">${esc(tableToText(c.table))}</textarea></label>
+      <label><span>${esc(T("fi_note"))}</span><input data-f="note" dir="${rtl ? "rtl" : "ltr"}" value="${esc(c.note)}"></label></div>`).join("")
+      : `<div class="card empty" style="margin-bottom:14px">${esc(T("incEmpty"))}</div>`;
+    $("incList").querySelectorAll(".icard [data-a]").forEach((b) => b.addEventListener("click", () => {
+      collectInc();
+      const arr = incDraft[incLang], i = +b.closest(".icard").dataset.ix;
+      if (b.dataset.a === "del") { if (!confirm(T("delCardQ"))) return; arr.splice(i, 1); }
+      else if (b.dataset.a === "up" && i > 0) [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]];
+      else if (b.dataset.a === "down" && i < arr.length - 1) [arr[i + 1], arr[i]] = [arr[i], arr[i + 1]];
+      renderInc();
+    }));
+  }
+  $("incAddCard").addEventListener("click", () => { collectInc(); (incDraft[incLang] = incDraft[incLang] || []).push({ icon: "🎁", color: "#f59e0b", title: "", intro: "", lines: [], formulas: [], table: null, note: "" }); renderInc(); });
+  $("incCopyEn").addEventListener("click", () => {
+    if (!confirm(T("incCopyQ"))) return;
+    incDraft[incLang] = JSON.parse(JSON.stringify(incData.cards.en || [])); renderInc();
+  });
+  $("incSave").addEventListener("click", async () => {
+    collectInc();
+    try { await api("/api/admin/incentives", { method: "POST", body: JSON.stringify({ lang: incLang, cards: incDraft[incLang] || [] }) }); toast(T("incSaved")); await loadInc(); } catch (e) { handleErr(e); }
+  });
+  $("incReset").addEventListener("click", async () => {
+    if (!confirm(T("incResetQ"))) return;
+    try { await api("/api/admin/incentives", { method: "POST", body: JSON.stringify({ lang: incLang, reset: true }) }); toast(T("incResetDone")); await loadInc(); } catch (e) { handleErr(e); }
+  });
+
   let timer = null;
   function startPolling() {
     stopPolling();
-    timer = setInterval(() => { if (!document.hidden && page === "live") loadLive(); }, 15000);
+    timer = setInterval(() => { if (document.hidden) return; if (page === "live") loadLive(); else if (page === "shifts") loadShifts(); }, 15000);
   }
   function stopPolling() { clearInterval(timer); timer = null; }
-  document.addEventListener("visibilitychange", () => { if (!document.hidden && !$("app").classList.contains("hidden") && page === "live") loadLive(); });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && !$("app").classList.contains("hidden")) { if (page === "live") loadLive(); else if (page === "shifts") loadShifts(); } });
 
   function renderAll() {
     renderRanges();
     if (overview) renderLive();
     if (report) renderReport();
     if (manage) renderRidersMgmt();
+    if (shiftsData) renderShifts();
+    if (incData) { collectInc(); renderInc(); }
     renderPerfTabs();
     if (perfList && perfTab === "data") { renderPerfData(); loadPerfData(true); }
     if (tipsData && perfTab === "tips") renderTips();
