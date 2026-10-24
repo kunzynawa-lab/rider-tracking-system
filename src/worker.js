@@ -33,6 +33,9 @@ const DEFAULTS = {
   MAX_ATTEMPTS: 3, // max repeats of the same question for one order
   STALE_HOURS: 4, // an open order with no movement closes itself
   MAX_SENDS_PER_TICK: 20, // send cap per minute (free plan limits)
+  ASK_STAGES: 0, // 0 = one question only ("do you have an order now?"); 1 = also ask picked up / delivered
+  ORDER_HOLD_MIN: 45, // (simple mode) a reported order closes itself if the rider stops confirming
+  SUP_AFTER_MIN: 10, // supervisors are asked to confirm attendance this long after the shift starts
   SHIFT_LEAD_MIN: 15, // first shift reminder this many minutes before the shift starts
   SHIFT_NAG_MIN: 5, // repeat the reminder every N minutes until the rider confirms
   SHIFT_OPEN_MIN: 30, // the rider may confirm from this many minutes before the start
@@ -118,7 +121,7 @@ const NOTICE = {
       picked_up: "Picked up",
       delivered: "Delivered",
     },
-    app: "Rider Tracking",
+    app: "Link",
     uptodate: "Nothing new",
   },
   ar: {
@@ -142,7 +145,7 @@ const NOTICE = {
       picked_up: "استلمت الطلب",
       delivered: "سلّمت الطلب",
     },
-    app: "متابعة المناديب",
+    app: "لينك",
     uptodate: "لا يوجد جديد",
   },
   ur: {
@@ -166,7 +169,7 @@ const NOTICE = {
       picked_up: "آرڈر لے لیا",
       delivered: "آرڈر ڈیلیور کر دیا",
     },
-    app: "رائیڈر ٹریکنگ",
+    app: "لنک",
     uptodate: "کوئی نئی اطلاع نہیں",
   },
   bn: {
@@ -190,7 +193,7 @@ const NOTICE = {
       picked_up: "অর্ডার নিয়েছি",
       delivered: "অর্ডার ডেলিভারি দিয়েছি",
     },
-    app: "রাইডার ট্র্যাকিং",
+    app: "লিংক",
     uptodate: "নতুন কিছু নেই",
   },
 };
@@ -216,12 +219,12 @@ const SHIFT_TXT = {
 
 // What the phone should show right now. While an order is open the notification is
 // "sticky": it carries the current step and the button for the next one.
-function buildNotice(state, lang) {
+function buildNotice(state, lang, stages = true) {
   const L = NOTICE[lang] || NOTICE.ar;
   const base = { dir: L.dir, lang: NOTICE[lang] ? lang : "ar" };
   const o = state.order;
   const p = state.prompt;
-  if (o && L.stage[o.stage]) {
+  if (stages && o && L.stage[o.stage]) {
     const q = p && L.ask[p.type] ? L.ask[p.type] : null;
     const next = o.stage === "declared" ? ["arrived", "picked_up"] : o.stage === "arrived" ? ["picked_up"] : ["delivered"];
     return {
@@ -465,6 +468,7 @@ async function handleRespond(env, body, now) {
   if (!ACTIONS.includes(action)) return fail("bad_action", "Unknown action", 400);
 
   const riderId = device.rider_id;
+  const simple = !cfg(env).ASK_STAGES;
   const loc = parseLoc(body);
   const state = await riderState(env, riderId, now);
   const order = state.order;
@@ -491,8 +495,17 @@ async function handleRespond(env, body, now) {
           .bind(riderId, riderId, loc ? loc.lat : null, loc ? loc.lng : null, now)
       );
     }
+    else if (simple) stmts.push(env.DB.prepare("UPDATE orders SET updated_at = ? WHERE id = ?").bind(now, order.id));
     stmts.push(answerPrompts(env, riderId, ["have_order"], "yes", now));
   } else if (action === "no_order") {
+    if (order && simple) {
+      stmts.push(
+        env.DB
+          .prepare("UPDATE orders SET status = 'delivered', stage = 'delivered', delivered_at = ?, updated_at = ? WHERE id = ?")
+          .bind(now, now, order.id)
+      );
+      stmts.push(eventStmt(env, riderId, order.id, "delivered", loc, now));
+    }
     stmts.push(answerPrompts(env, riderId, ["have_order"], "no", now));
   } else if (action === "not_yet") {
     stmts.push(answerPrompts(env, riderId, ["picked_up", "delivered"], "no", now));
@@ -538,7 +551,7 @@ async function handleRespond(env, body, now) {
   }
 
   if (stmts.length) await env.DB.batch(stmts);
-  if (order && (action === "delivered" || action === "cancel")) {
+  if (order && (action === "delivered" || action === "cancel" || (simple && action === "no_order"))) {
     await safeRun(env.DB.prepare("UPDATE riders SET idle_since = ? WHERE id = ?").bind(now, riderId));
   }
   const fresh = await riderState(env, riderId, now);
@@ -562,7 +575,8 @@ async function tick(env) {
     .prepare("UPDATE prompts SET status = 'missed' WHERE status = 'pending' AND sent_at <= ?")
     .bind(now - c.MISS_AFTER_MIN * MIN)
     .run();
-  const staleBefore = now - c.STALE_HOURS * HOUR;
+  const simple = !c.ASK_STAGES;
+  const staleBefore = simple ? now - c.ORDER_HOLD_MIN * MIN : now - c.STALE_HOURS * HOUR;
   await safeRun(
     db
       .prepare(
@@ -572,7 +586,11 @@ async function tick(env) {
       .bind(now, staleBefore)
   );
   await db
-    .prepare("UPDATE orders SET status = 'expired', updated_at = ? WHERE status = 'active' AND updated_at <= ?")
+    .prepare(
+      simple
+        ? "UPDATE orders SET status = 'delivered', stage = 'delivered', delivered_at = updated_at, updated_at = ? WHERE status = 'active' AND updated_at <= ?"
+        : "UPDATE orders SET status = 'expired', updated_at = ? WHERE status = 'active' AND updated_at <= ?"
+    )
     .bind(now, staleBefore)
     .run();
 
@@ -595,6 +613,13 @@ async function tick(env) {
     const r = await shiftTick(env, now, tz, c, Math.min(c.SHIFT_SENDS_PER_TICK, c.MAX_SENDS_PER_TICK));
     out.shift = r;
     shiftSent = r.sent + r.failed;
+    try {
+      const u = await supTick(env, now, tz, c, 5);
+      out.sup = u;
+      shiftSent += u.sent + u.failed;
+    } catch (e) {
+      console.error("supTick failed", e && e.message ? e.message : e);
+    }
   } catch (e) {
     console.error("shiftTick failed", e && e.message ? e.message : e);
   }
@@ -617,7 +642,7 @@ async function tick(env) {
        JOIN devices d ON d.id = (SELECT d2.id FROM devices d2 WHERE d2.rider_id = r.id
          AND d2.push_subscription IS NOT NULL ORDER BY d2.id DESC LIMIT 1)
        WHERE r.active = 1
-         AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.rider_id = r.id AND o.status = 'active')
+         ${simple ? "" : "AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.rider_id = r.id AND o.status = 'active')"}
          AND NOT EXISTS (SELECT 1 FROM prompts p WHERE p.rider_id = r.id AND p.status = 'pending')
          AND COALESCE((SELECT MAX(p.sent_at) FROM prompts p
                WHERE p.rider_id = r.id AND p.type = 'have_order'), 0) <= ?
@@ -641,13 +666,13 @@ async function tick(env) {
        LIMIT ?`
     );
 
-  if (jobs.length < cap) {
+  if (!simple && jobs.length < cap) {
     const rows = await stageQuery("'declared','arrived'", "picked_up", "declared_at")
       .bind(c.MAX_ATTEMPTS, c.REPEAT_MIN * MIN, c.PICKUP_AFTER_MIN * MIN, now, cap - jobs.length)
       .all();
     for (const r of rows.results || []) jobs.push({ ...r, type: "picked_up" });
   }
-  if (jobs.length < cap) {
+  if (!simple && jobs.length < cap) {
     const rows = await stageQuery("'picked_up'", "delivered", "picked_at")
       .bind(c.MAX_ATTEMPTS, c.REPEAT_MIN * MIN, c.DELIVER_AFTER_MIN * MIN, now, cap - jobs.length)
       .all();
@@ -1865,6 +1890,193 @@ async function getIncentives(env) {
   return { cards: out, custom };
 }
 
+/* ---------------------------- Supervisor notifications ---------------------------- */
+const SUP_TXT = {
+  en: {
+    head: "{name} starts in {n} min", head_b: "{r} riders are scheduled. Be ready to confirm attendance.",
+    conf: "Confirm attendance: {name}", conf_b: "{p} riders have not confirmed yet. Open the page and confirm.", app: "Link",
+  },
+  ar: {
+    head: "{name} يبدأ بعد {n} دقيقة", head_b: "{r} مندوب مجدولون. كن جاهزاً لتأكيد الحضور.",
+    conf: "أكّد حضور: {name}", conf_b: "{p} مندوب لم يؤكدوا بعد. افتح الصفحة وأكّد.", app: "لينك",
+  },
+};
+
+// what a supervisor should be told right now (null = nothing)
+function supDecide(item, supId, now, c) {
+  const { occ, riders, confirms } = item;
+  if (!riders.length) return null;
+  if (now < occ.startAt) return { kind: "head", n: Math.max(0, Math.round((occ.startAt - now) / MIN)), r: riders.length };
+  const mine = confirms.some((x) => x.sup_id === supId);
+  if (!mine && now >= occ.startAt + c.SUP_AFTER_MIN * MIN) {
+    return { kind: "conf", p: riders.filter((r) => r.status === "pending").length };
+  }
+  return null;
+}
+
+function supNoticeFrom(dec, band, lang) {
+  const L = SUP_TXT[lang] || SUP_TXT.ar;
+  const base = { dir: lang === "en" ? "ltr" : "rtl", lang: SUP_TXT[lang] ? lang : "ar", sticky: false, actions: [], url: "/sup" };
+  if (!dec) return { ...base, kind: "none", title: L.app, body: "" };
+  if (dec.kind === "head") {
+    return { ...base, kind: "sup", title: L.head.replace("{name}", band.name).replace("{n}", dec.n), body: L.head_b.replace("{r}", dec.r) };
+  }
+  return { ...base, kind: "sup", title: L.conf.replace("{name}", band.name), body: L.conf_b.replace("{p}", dec.p) };
+}
+
+async function supNotice(env, sup, now, c) {
+  const tzp = tzParts(now, c.TIMEZONE);
+  const dev = await env.DB.prepare("SELECT lang FROM sup_devices WHERE sup_id = ?").bind(sup.id).first();
+  const lang = (dev && dev.lang) || "ar";
+  const list = await env.DB
+    .prepare(
+      `SELECT s.id, s.name, s.start_min, s.end_min FROM shift_sups ss
+       JOIN shifts s ON s.id = ss.shift_id AND s.active = 1 WHERE ss.sup_id = ?`
+    )
+    .bind(sup.id)
+    .all();
+  let best = null;
+  for (const b of (list && list.results) || []) {
+    for (const o of occurrences(now, tzp, b)) {
+      if (!(now >= o.startAt - c.SHIFT_LEAD_MIN * MIN && now < o.endAt)) continue;
+      const riders = await shiftRiders(env, b, o, tzp);
+      const confirms = await shiftConfirms(env, b.id, o.day);
+      const dec = supDecide({ occ: o, riders, confirms }, sup.id, now, c);
+      if (dec && (!best || dec.kind === "conf")) best = { dec, band: b };
+    }
+  }
+  return supNoticeFrom(best && best.dec, best && best.band, lang);
+}
+
+async function supTick(env, now, tzp, c, cap) {
+  const out = { sent: 0, failed: 0 };
+  if (cap <= 0) return out;
+  const db = env.DB;
+  let bands;
+  try { bands = await activeBands(env); } catch { return out; }
+  const lead = c.SHIFT_LEAD_MIN * MIN, every = c.SHIFT_NAG_MIN * MIN;
+  const act = [];
+  for (const b of bands) for (const o of occurrences(now, tzp, b)) if (now >= o.startAt - lead && now < o.endAt) act.push({ band: b, occ: o });
+  if (!act.length) return out;
+  const ids = [...new Set(act.map((x) => x.band.id))].join(",");
+  let targets;
+  try {
+    targets = ((await db
+      .prepare(
+        `SELECT ss.shift_id, su.id AS sup_id, sd.subscription AS sub, sd.lang FROM shift_sups ss
+         JOIN supervisors su ON su.id = ss.sup_id AND su.active = 1
+         JOIN sup_devices sd ON sd.sup_id = su.id WHERE ss.shift_id IN (${ids})`
+      )
+      .all()).results) || [];
+  } catch { return out; }
+  if (!targets.length) return out;
+  const nagRows = new Map();
+  for (const day of [...new Set(act.map((x) => x.occ.day))]) {
+    const r = await db.prepare("SELECT day, shift_id, sup_id, nags, last_nag FROM sup_nag WHERE day = ?").bind(day).all();
+    for (const x of (r && r.results) || []) nagRows.set(x.day + "|" + x.shift_id + "|" + x.sup_id, x);
+  }
+  const jobs = [];
+  for (const { band, occ } of act) {
+    const mine = targets.filter((t) => t.shift_id === band.id);
+    if (!mine.length) continue;
+    const riders = await shiftRiders(env, band, occ, tzp);
+    const confirms = await shiftConfirms(env, band.id, occ.day);
+    for (const t of mine) {
+      if (jobs.length >= cap) break;
+      const dec = supDecide({ occ, riders, confirms }, t.sup_id, now, c);
+      if (!dec) continue;
+      const row = nagRows.get(occ.day + "|" + band.id + "|" + t.sup_id);
+      const nags = row ? row.nags || 0 : 0, last = row ? row.last_nag || 0 : 0;
+      if (dec.kind === "head" ? nags > 0 : last > now - every || nags >= c.SHIFT_MAX_NAGS) continue;
+      jobs.push({ ...t, day: occ.day, band_id: band.id });
+    }
+  }
+  if (!jobs.length) return out;
+  const results = await Promise.all(
+    jobs.map(async (j) => {
+      let sub;
+      try { sub = JSON.parse(j.sub); } catch { return 410; }
+      return sendPush(sub, env, 600);
+    })
+  );
+  const stmts = [];
+  results.forEach((status, i) => {
+    const j = jobs[i];
+    if (status >= 200 && status < 300) {
+      out.sent++;
+      stmts.push(
+        db.prepare(
+          `INSERT INTO sup_nag (day, shift_id, sup_id, nags, last_nag) VALUES (?1, ?2, ?3, 1, ?4)
+           ON CONFLICT(day, shift_id, sup_id) DO UPDATE SET nags = COALESCE(sup_nag.nags, 0) + 1, last_nag = excluded.last_nag`
+        ).bind(j.day, j.band_id, j.sup_id, now)
+      );
+      return;
+    }
+    out.failed++;
+    if (status === 404 || status === 410) stmts.push(db.prepare("DELETE FROM sup_devices WHERE sup_id = ?").bind(j.sup_id));
+  });
+  if (stmts.length) await db.batch(stmts);
+  return out;
+}
+
+async function supSubscribe(env, sup, body) {
+  const sub = body && body.subscription;
+  if (!sub || !sub.endpoint) return fail("bad_request", "Invalid subscription", 400);
+  const lang = body.lang === "en" ? "en" : "ar";
+  await env.DB
+    .prepare(
+      `INSERT INTO sup_devices (sup_id, subscription, lang) VALUES (?, ?, ?)
+       ON CONFLICT(sup_id) DO UPDATE SET subscription = excluded.subscription, lang = excluded.lang`
+    )
+    .bind(sup.id, JSON.stringify(sub), lang)
+    .run();
+  return json({ ok: true });
+}
+
+/* ---------------------------- Admin: delete riders, all schedules ---------------------------- */
+async function adminDeleteRiders(env, body) {
+  let ids = [];
+  if (body && body.all) {
+    const keep = new Set((Array.isArray(body.keep) ? body.keep : []).map((x) => String(x).trim()));
+    const rows = await env.DB.prepare("SELECT id FROM riders").all();
+    ids = ((rows && rows.results) || []).map((r) => r.id).filter((id) => !keep.has(String(id)));
+  } else {
+    ids = (Array.isArray(body && body.ids) ? body.ids : []).map((x) => String(x).trim()).filter(Boolean).slice(0, 500);
+  }
+  const core = ["devices", "orders", "prompts", "events", "locations"];
+  const optional = ["performance", "perf_prev", "rider_shifts", "attendance"];
+  for (let i = 0; i < ids.length; i += 40) {
+    const part = ids.slice(i, i + 40);
+    const marks = part.map(() => "?").join(",");
+    await env.DB.batch([
+      ...core.map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE rider_id IN (${marks})`).bind(...part)),
+      env.DB.prepare(`DELETE FROM riders WHERE id IN (${marks})`).bind(...part),
+    ]);
+    for (const t of optional) await safeRun(env.DB.prepare(`DELETE FROM ${t} WHERE rider_id IN (${marks})`).bind(...part));
+  }
+  return { ok: true, deleted: ids.length };
+}
+
+async function adminSchedules(env, now, c) {
+  const tzp = tzParts(now, c.TIMEZONE);
+  const days = Array.from({ length: 7 }, (_, i) => dayKey(tzp.dayStart + i * DAY, tzp));
+  const [riders, rows] = await Promise.all([
+    env.DB.prepare("SELECT id, name FROM riders WHERE active = 1 ORDER BY name, id").all(),
+    env.DB.prepare("SELECT rider_id, day, start_min, end_min FROM rider_shifts WHERE day >= ? AND day <= ? ORDER BY day, start_min").bind(days[0], days[6]).all(),
+  ]);
+  const by = new Map();
+  for (const r of (rows && rows.results) || []) {
+    const k = r.rider_id + "|" + r.day;
+    if (!by.has(k)) by.set(k, []);
+    by.get(k).push(hhmm(r.start_min) + "-" + hhmm(r.end_min));
+  }
+  return {
+    ok: true,
+    days,
+    riders: ((riders && riders.results) || []).map((r) => ({ id: r.id, name: r.name, slots: days.map((d) => by.get(r.id + "|" + d) || []) })),
+  };
+}
+
 /* ---------------------------- Routes ---------------------------- */
 export default {
   async fetch(request, env) {
@@ -1908,6 +2120,7 @@ export default {
         rider,
         lang: cleanLang(device.lang) || "ar",
         pushEnabled: !!device.push_enabled,
+        stages: !!cfg(env).ASK_STAGES,
         shift,
         ...state,
       });
@@ -1957,6 +2170,8 @@ export default {
       if (!sup) return fail("bad_code", "Invalid code", 401);
       const c = cfg(env);
       if (path === "/api/sup/board") return json(await supBoard(env, sup, now, c));
+      if (path === "/api/sup/notice") return json({ ok: true, notice: await supNotice(env, sup, now, c) });
+      if (path === "/api/sup/subscribe") return supSubscribe(env, sup, body);
       if (path === "/api/sup/mark") return supMark(env, sup, body, now, c);
       if (path === "/api/sup/confirm") return supConfirm(env, sup, body, now, c);
       return fail("not_found", "Not found", 404);
@@ -2050,7 +2265,7 @@ export default {
       if (!device) return json({ ok: true, notice: buildNotice({ order: null, prompt: null }, "ar") });
       const state = await riderState(env, device.rider_id, now);
       if (!state.order) state.shift = await riderShift(env, device.rider_id, now, cfg(env));
-      return json({ ok: true, notice: buildNotice(state, cleanLang(device.lang) || "ar") });
+      return json({ ok: true, notice: buildNotice(state, cleanLang(device.lang) || "ar", !!cfg(env).ASK_STAGES) });
     }
 
     // Older service workers
@@ -2135,6 +2350,14 @@ export default {
           .bind(data)
           .run();
         return json({ ok: true });
+      }
+      if (path === "/api/admin/riders/delete" && request.method === "POST") {
+        const body = await readBody(request);
+        if (!body) return json({ ok: false }, 400);
+        return json(await adminDeleteRiders(env, body));
+      }
+      if (path === "/api/admin/schedules" && request.method === "GET") {
+        return json(await adminSchedules(env, now, cfg(env)));
       }
       if (path === "/api/admin/shifts" && request.method === "GET") {
         return json(await adminShifts(env, now, cfg(env)));
