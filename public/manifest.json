@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "نظام متابعة المناديب",
-  "short_name": "المناديب",
+  "name": "لينك - Link",
+  "short_name": "لينك",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
