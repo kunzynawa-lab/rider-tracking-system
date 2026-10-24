@@ -7,4 +7,5 @@ CREATE TABLE IF NOT EXISTS attendance (day TEXT NOT NULL, band_id INTEGER, rider
 CREATE TABLE IF NOT EXISTS shift_confirm (day TEXT NOT NULL, shift_id INTEGER NOT NULL, sup_id INTEGER NOT NULL, at INTEGER, present INTEGER, absent INTEGER, PRIMARY KEY (day, shift_id, sup_id));
 CREATE INDEX IF NOT EXISTS idx_rider_shifts_day ON rider_shifts(day);
 CREATE INDEX IF NOT EXISTS idx_attendance_band ON attendance(day, band_id);
-
+CREATE TABLE IF NOT EXISTS sup_devices (sup_id INTEGER PRIMARY KEY, subscription TEXT, lang TEXT);
+CREATE TABLE IF NOT EXISTS sup_nag (day TEXT NOT NULL, shift_id INTEGER NOT NULL, sup_id INTEGER NOT NULL, nags INTEGER DEFAULT 0, last_nag INTEGER, PRIMARY KEY (day, shift_id, sup_id));
