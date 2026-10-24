@@ -48,8 +48,8 @@ async function kvSet(key, value) {
 const FALLBACK = {
   kind: "none",
   sticky: false,
-  title: "متابعة المناديب",
-  body: "Rider Tracking",
+  title: "لينك",
+  body: "Link",
   actions: [],
   dir: "auto",
   lang: "ar",
@@ -57,6 +57,17 @@ const FALLBACK = {
 
 async function fetchNotice() {
   try {
+    const supcode = await kvGet("supcode");
+    if (supcode) {
+      const r = await fetch("/api/sup/notice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: supcode }),
+      });
+      const d = await r.json();
+      if (d && d.ok && d.notice) return d.notice;
+      return null;
+    }
     const token = await kvGet("token");
     const body = token ? { token } : {};
     if (!token) {
@@ -77,16 +88,17 @@ async function fetchNotice() {
 }
 
 async function show(n) {
+  const urgent = n.kind === "prompt" || n.kind === "shift";
   const opts = {
     body: n.body,
     icon: ICON,
     badge: ICON,
     tag: TAG,
-    renotify: !n.sticky || n.kind === "prompt",
-    requireInteraction: !!n.sticky || n.kind === "prompt",
+    renotify: !n.sticky || urgent,
+    requireInteraction: !!n.sticky || urgent,
     dir: n.dir || "auto",
     lang: n.lang || "ar",
-    data: { url: "/", kind: n.kind, sticky: !!n.sticky },
+    data: { url: n.url || "/", kind: n.kind, sticky: !!n.sticky },
   };
   const actions = (n.actions || []).slice(0, 2).map((a) => ({ action: a.action, title: a.title }));
   if (actions.length) opts.actions = actions;
@@ -113,6 +125,10 @@ self.addEventListener("message", (event) => {
   const d = event.data || {};
   event.waitUntil(
     (async () => {
+      if (d.type === "supcode") {
+        await kvSet("supcode", d.code || null);
+        return;
+      }
       if (d.type === "token") {
         await kvSet("token", d.token || null);
         return;
@@ -137,10 +153,11 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   event.waitUntil(
     (async () => {
-      const target = action ? "/?do=" + encodeURIComponent(action) : "/";
+      const base = (event.notification.data && event.notification.data.url) || "/";
+      const target = action ? "/?do=" + encodeURIComponent(action) : base;
       const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
       for (const w of wins) {
-        if ("focus" in w) {
+        if ("focus" in w && (!base || base === "/" || w.url.includes(base))) {
           await w.focus();
           if (action) w.postMessage({ type: "do", action });
           return;
