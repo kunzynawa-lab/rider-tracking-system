@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Rider Tracking · Admin</title>
+  <title>Link · Admin</title>
   <meta name="theme-color" content="#0f766e">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -264,7 +264,7 @@
       <section id="pg-riders" class="hidden">
         <div class="head">
           <div><h1 data-i="ridersTitle"></h1><div class="sub" id="ridersSub"></div></div>
-          <div style="display:flex;gap:8px"><input id="riderSearch" style="width:220px" data-ph="search"><button class="btn" id="addBtn" data-i="addRiders"></button></div>
+          <div style="display:flex;gap:8px"><input id="riderSearch" style="width:220px" data-ph="search"><button class="btn" id="addBtn" data-i="addRiders"></button><button class="btn ghost" id="delAllBtn" data-i="delAll"></button></div>
         </div>
         <div class="card"><div class="scroll" style="max-height:none"><table><thead><tr id="mgHead"></tr></thead><tbody id="mgBody"></tbody></table></div></div>
       </section>
@@ -347,6 +347,9 @@
           <form id="supForm" style="display:flex;gap:8px"><input id="supName" style="width:220px" data-ph="supName"><button class="btn sm" type="submit" data-i="supAdd"></button></form></div>
         <div class="card" style="margin-bottom:16px"><div class="scroll" style="max-height:none"><table><thead><tr id="supHead"></tr></thead><tbody id="supBody"></tbody></table></div></div>
 
+        <div class="h2row"><h2 style="font-size:17px" data-i="schTitle"></h2></div>
+        <div class="card" style="margin-bottom:16px"><div class="scroll" style="max-height:420px"><table><thead><tr id="schHead"></tr></thead><tbody id="schBody"></tbody></table></div></div>
+
         <div class="h2row"><h2 style="font-size:17px" data-i="shHist"></h2></div>
         <div class="card"><div class="scroll" style="max-height:360px"><table><thead><tr id="hiHead"></tr></thead><tbody id="hiBody"></tbody></table></div></div>
       </section>
@@ -403,7 +406,7 @@
   <script>
   const I18N = {
     en: {
-      dir: "ltr", brand: "Rider Tracking", gateTitle: "Admin sign-in", gateSub: "Enter the admin key to continue.", adminKey: "Admin key", signIn: "Sign in", signOut: "Sign out",
+      dir: "ltr", brand: "Link", gateTitle: "Admin sign-in", gateSub: "Enter the admin key to continue.", adminKey: "Admin key", signIn: "Sign in", signOut: "Sign out",
       navLive: "Live", navReports: "Reports", navRiders: "Riders",
       navPerf: "Performance", perfTitle: "Rider performance", perfWarn: "Upload the performance sheet (Excel/CSV). Every new upload replaces all previous data; each rider's previous segment is kept for comparison. Riders see their own results in their app.",
       chooseSheet: "Choose Excel / CSV", pt_upload: "Upload sheet", pt_data: "Current data", pt_tips: "Instructions & tips",
@@ -420,7 +423,7 @@
       k_total: "Active riders", k_order: "On an order", k_idle: "Idle now", k_deliv: "Delivered today", k_late: "No response", k_push: "Notifications off",
       s_total: "registered", s_order: "{p}% of riders", s_idle: "available for orders", s_deliv: "completed orders", s_late: "questions unanswered", s_push: "can't be asked",
       f_all: "All", f_idle: "Idle", f_declared: "To restaurant", f_arrived: "At restaurant", f_picked_up: "At customer", f_late: "No response", f_push: "Notifications off",
-      st_idle: "Idle", st_declared: "To restaurant", st_arrived: "At restaurant", st_picked_up: "Delivering to customer",
+      st_idle: "Idle", st_declared: "On order", st_arrived: "At restaurant", st_picked_up: "Delivering to customer",
       lg_idle: "Idle", lg_declared: "Heading to restaurant", lg_arrived: "At restaurant", lg_picked_up: "Heading to customer",
       c_rider: "Rider", c_status: "Status", c_time: "In status", c_seen: "Last seen", c_notif: "Alerts", c_deliv: "Delivered", c_asked: "Question",
       q_have_order: "Has order?", q_picked_up: "Picked up?", q_delivered: "Delivered?",
@@ -444,7 +447,7 @@
       min: "m", hr: "h", day: "d", sec: "s",
     },
     ar: {
-      dir: "rtl", brand: "متابعة المناديب", gateTitle: "دخول الإدارة", gateSub: "أدخل مفتاح الإدارة للمتابعة.", adminKey: "مفتاح الإدارة", signIn: "دخول", signOut: "خروج",
+      dir: "rtl", brand: "لينك", gateTitle: "دخول الإدارة", gateSub: "أدخل مفتاح الإدارة للمتابعة.", adminKey: "مفتاح الإدارة", signIn: "دخول", signOut: "خروج",
       navLive: "المباشر", navReports: "التقارير", navRiders: "المناديب",
       navPerf: "الأداء", perfTitle: "أداء المناديب", perfWarn: "ارفع شيت الأداء (Excel/CSV). أي رفع جديد يمسح كل البيانات السابقة، ويحتفظ بالـ Segment السابق لكل مندوب للمقارنة. يرى كل مندوب نتائجه في تطبيقه.",
       chooseSheet: "اختر ملف Excel / CSV", pt_upload: "رفع الشيت", pt_data: "البيانات الحالية", pt_tips: "التعليمات والنصائح",
@@ -461,7 +464,7 @@
       k_total: "المناديب النشطون", k_order: "لديهم طلب", k_idle: "خاملون الآن", k_deliv: "تم تسليمها اليوم", k_late: "بدون رد", k_push: "الإشعارات متوقفة",
       s_total: "مسجّل", s_order: "{p}% من المناديب", s_idle: "متاحون للطلبات", s_deliv: "طلب مكتمل", s_late: "أسئلة بلا إجابة", s_push: "لا يمكن سؤالهم",
       f_all: "الكل", f_idle: "خامل", f_declared: "في الطريق للمطعم", f_arrived: "عند المطعم", f_picked_up: "عند العميل", f_late: "بدون رد", f_push: "الإشعارات متوقفة",
-      st_idle: "خامل", st_declared: "في الطريق للمطعم", st_arrived: "عند المطعم", st_picked_up: "في الطريق للعميل",
+      st_idle: "خامل", st_declared: "معه طلب", st_arrived: "عند المطعم", st_picked_up: "في الطريق للعميل",
       lg_idle: "خامل", lg_declared: "في الطريق للمطعم", lg_arrived: "عند المطعم", lg_picked_up: "في الطريق للعميل",
       c_rider: "المندوب", c_status: "الحالة", c_time: "المدة بالحالة", c_seen: "آخر ظهور", c_notif: "الإشعارات", c_deliv: "التسليم", c_asked: "السؤال",
       q_have_order: "هل معه طلب؟", q_picked_up: "هل استلم؟", q_delivered: "هل سلّم؟",
@@ -487,6 +490,8 @@
   };
 
   Object.assign(I18N.en, {
+    delRider: "Delete", delOneQ: "Delete rider {id} and all of his data? This cannot be undone.", delAll: "Delete all riders except…", delAllAsk: "Enter the IDs to KEEP (comma separated). Everyone else will be deleted with all their data.", delAllQ: "Delete {n} riders permanently? This cannot be undone.", delDone: "Deleted {n} riders.", delNone: "Nobody to delete.",
+    schTitle: "All rider shifts (next 7 days)", schNone: "—", schRider: "Rider", onOrder: "On order",
     navShifts: "Shifts", navInc: "Incentives", refresh: "Refresh", edit: "Edit", delete: "Delete", yes: "Yes",
     shTitle: "Shifts & attendance", shSub: "{t} · {n} supervisors", shHelp: "Each rider sets his own shifts (up to 3 a day) in the app. He gets a reminder {l} min before each shift and then every {e} min until he confirms he started. A rider is supervised by the window below that contains his shift start; its supervisors must confirm attendance.",
     shToday: "Today's shifts", shSetup: "Supervision windows", shAdd: "Add window", supTitle: "Supervisors", supAdd: "Add supervisor", supName: "Supervisor name", shHist: "Last 7 days",
@@ -511,6 +516,8 @@
     addHelp2: "Upload an Excel/CSV file (column 1 = ID, column 2 = name, column 3 = shift name or number, optional), or paste from Excel, or type one rider per line: ID, name, shift. Only riders added here can open the app.",
   });
   Object.assign(I18N.ar, {
+    delRider: "حذف", delOneQ: "حذف المندوب {id} وكل بياناته؟ لا يمكن التراجع.", delAll: "حذف الكل ما عدا…", delAllAsk: "اكتب أرقام المناديب التي تريد الإبقاء عليها (مفصولة بفاصلة). كل الباقين سيُحذفون مع بياناتهم.", delAllQ: "حذف {n} مندوب نهائياً؟ لا يمكن التراجع.", delDone: "تم حذف {n} مندوب.", delNone: "لا يوجد من يُحذف.",
+    schTitle: "شيفتات كل المناديب (الأيام السبعة القادمة)", schNone: "—", schRider: "المندوب", onOrder: "معه طلب",
     navShifts: "الشيفتات", navInc: "الحوافز", refresh: "تحديث", edit: "تعديل", delete: "حذف", yes: "نعم",
     shTitle: "الشيفتات والحضور", shSub: "{t} · {n} مشرف", shHelp: "كل مندوب يحدد شيفتاته بنفسه (حتى 3 في اليوم) من التطبيق، ويصله تنبيه قبل كل شيفت بـ {l} دقيقة ثم كل {e} دقائق حتى يؤكد أنه بدأ. يتبع المندوب النافذة بالأسفل التي تحتوي على وقت بداية شيفته، ويجب على مشرفيها تأكيد الحضور.",
     shToday: "شيفتات اليوم", shSetup: "نوافذ الإشراف", shAdd: "إضافة نافذة", supTitle: "المشرفون", supAdd: "إضافة مشرف", supName: "اسم المشرف", shHist: "آخر 7 أيام",
@@ -891,9 +898,13 @@
       ? rows.map((r) => `<tr><td class="num">${esc(r.id)}</td><td class="rname">${esc(r.name || "")}</td>
           <td><span class="badge ${r.active ? "b-green" : "b-idle"}">${esc(T(r.active ? "active" : "inactive"))}</span></td>
           <td>${r.push ? "🔔 " + esc(T("on")) : `<span class="badge b-late">${esc(T("off"))}</span>`}</td>
-          <td><button class="btn ghost sm" data-id="${esc(r.id)}" data-a="${r.active ? 0 : 1}">${esc(T(r.active ? "deactivate" : "activate"))}</button></td></tr>`).join("")
+          <td style="white-space:nowrap"><button class="btn ghost sm" data-id="${esc(r.id)}" data-a="${r.active ? 0 : 1}">${esc(T(r.active ? "deactivate" : "activate"))}</button> <button class="btn ghost sm" data-del="${esc(r.id)}" style="color:#dc2626">${esc(T("delRider"))}</button></td></tr>`).join("")
       : `<tr><td colspan="5" class="empty">${esc(T("noRiders"))}</td></tr>`;
-    $("mgBody").querySelectorAll("button").forEach((b) => b.addEventListener("click", async () => {
+    $("mgBody").querySelectorAll("button[data-del]").forEach((b) => b.addEventListener("click", async () => {
+      if (!confirm(T("delOneQ", { id: b.dataset.del }))) return;
+      try { await api("/api/admin/riders/delete", { method: "POST", body: JSON.stringify({ ids: [b.dataset.del] }) }); loadRiders(); } catch (e) { handleErr(e); }
+    }));
+    $("mgBody").querySelectorAll("button[data-id]").forEach((b) => b.addEventListener("click", async () => {
       try {
         await api("/api/admin/riders/status", { method: "POST", body: JSON.stringify({ id: b.dataset.id, active: b.dataset.a === "1" }) });
         loadRiders();
@@ -901,6 +912,20 @@
     }));
   }
   $("riderSearch").addEventListener("input", renderRidersMgmt);
+  $("delAllBtn").addEventListener("click", async () => {
+    if (!manage) return;
+    const ans = prompt(T("delAllAsk"), "1001");
+    if (ans === null) return;
+    const keep = ans.split(/[,\s;،]+/).map((x) => x.trim()).filter(Boolean);
+    const n = manage.riders.filter((r) => !keep.includes(String(r.id))).length;
+    if (!n) return alert(T("delNone"));
+    if (!confirm(T("delAllQ", { n }))) return;
+    try {
+      const r = await api("/api/admin/riders/delete", { method: "POST", body: JSON.stringify({ all: true, keep }) });
+      alert(T("delDone", { n: r.deleted }));
+      loadRiders();
+    } catch (e) { handleErr(e); }
+  });
 
   $("addBtn").addEventListener("click", () => { $("addErr").textContent = ""; $("addDlg").showModal(); $("addText").focus(); });
   $("addCancel").addEventListener("click", () => $("addDlg").close());
@@ -1211,6 +1236,14 @@
 
   async function loadShifts() {
     try { shiftsData = await api("/api/admin/shifts"); renderShifts(); } catch (e) { handleErr(e); }
+    try { renderSchedules(await api("/api/admin/schedules")); } catch (e) { /* optional */ }
+  }
+  function renderSchedules(d) {
+    $("schHead").innerHTML = `<th>${esc(T("schRider"))}</th>` + d.days.map((x) => `<th>${esc(x.slice(5))}</th>`).join("");
+    $("schBody").innerHTML = d.riders.length
+      ? d.riders.map((r) => `<tr><td class="rname">${esc(r.name || r.id)} <span class="muted">${esc(r.id)}</span></td>` +
+          r.slots.map((sl) => `<td dir="ltr" style="white-space:nowrap">${sl.length ? sl.map(esc).join("<br>") : '<span class="muted">' + esc(T("schNone")) + "</span>"}</td>`).join("") + "</tr>").join("")
+      : `<tr><td colspan="8" class="empty">${esc(T("noRiders"))}</td></tr>`;
   }
   function phaseOf(s, now) {
     const o = s.occ;
