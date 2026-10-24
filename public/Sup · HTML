@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Supervisor</title>
+  <title>Link - Supervisor</title>
+  <link rel="manifest" href="/sup-manifest.json">
   <meta name="theme-color" content="#0f766e">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -83,6 +84,7 @@
     <div class="tools">
       <button type="button" data-lang="ar">عربي</button>
       <button type="button" data-lang="en">EN</button>
+      <button type="button" id="pushBtn" class="hidden"></button>
       <button type="button" id="outBtn" class="hidden"></button>
     </div>
   </header>
@@ -111,7 +113,7 @@
         noRiders: "لا يوجد مناديب في هذا الشيفت.", confirmBtn: "تأكيد حضور الشيفت", reconfirm: "تحديث التأكيد", confirmed: "أكّدت الشيفت الساعة {t}", other: "{n} أكّد الساعة {t}", waiting: "{n}: لم يؤكد بعد",
         pendingQ: "{n} مندوب لم يؤكدوا الحضور. سيتم تسجيلهم غائبين. متابعة؟", done: "تم تأكيد الشيفت.", early: "لسه بدري على التأكيد.",
         byRider: "أكّد بنفسه {t}", bySup: "سجّله المشرف", lateN: "متأخر {n} د", noApp: "لم يفتح التطبيق", noPush: "الإشعارات متوقفة", notYet: "لم يؤكد بعد",
-        presentBtn: "حاضر", absentBtn: "غائب",
+        presentBtn: "حاضر", absentBtn: "غائب", pushOn: "🔔 فعّل التنبيهات", pushDone: "🔔 مفعّلة", pushDenied: "التنبيهات محظورة من إعدادات المتصفح.", pushUnsupported: "المتصفح لا يدعم التنبيهات. على الآيفون: أضف الصفحة للشاشة الرئيسية أولاً.", pushOk: "تم تفعيل التنبيهات قبل كل شيفت.",
       },
       en: {
         dir: "ltr", title: "Supervisor", gTitle: "Supervisor sign-in", gSub: "Enter the code you received from management.", go: "Continue", out: "Sign out", bad: "Wrong code.", net: "Could not connect, try again.",
@@ -120,7 +122,7 @@
         noRiders: "No riders in this shift.", confirmBtn: "Confirm shift attendance", reconfirm: "Update confirmation", confirmed: "You confirmed this shift at {t}", other: "{n} confirmed at {t}", waiting: "{n}: not confirmed yet",
         pendingQ: "{n} riders have not confirmed. They will be marked absent. Continue?", done: "Shift confirmed.", early: "Too early to confirm.",
         byRider: "Confirmed by rider {t}", bySup: "Marked by supervisor", lateN: "{n} min late", noApp: "app not opened", noPush: "notifications off", notYet: "not confirmed yet",
-        presentBtn: "Present", absentBtn: "Absent",
+        presentBtn: "Present", absentBtn: "Absent", pushOn: "🔔 Enable alerts", pushDone: "🔔 On", pushDenied: "Notifications are blocked in browser settings.", pushUnsupported: "Notifications are not supported. On iPhone, add this page to the Home Screen first.", pushOk: "Alerts enabled before each shift.",
       },
     };
     const $ = (id) => document.getElementById(id);
@@ -145,8 +147,9 @@
     function applyLang() {
       document.documentElement.lang = lang; document.documentElement.dir = I[lang].dir;
       document.querySelectorAll("[data-lang]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
-      $("title").textContent = T("title"); document.title = T("title");
+      $("title").textContent = T("title"); document.title = "Link - " + T("title");
       $("gTitle").textContent = T("gTitle"); $("gSub").textContent = T("gSub"); $("gBtn").textContent = T("go"); $("outBtn").textContent = T("out");
+      if (!$("pushBtn").classList.contains("hidden")) pushState();
       if (board) render();
     }
     document.querySelectorAll("[data-lang]").forEach((b) => b.addEventListener("click", () => { lang = b.dataset.lang; ls.set("supLang", lang); applyLang(); }));
@@ -162,7 +165,31 @@
       $("gBtn").disabled = true;
       try { await load(true); } finally { $("gBtn").disabled = false; }
     });
-    $("outBtn").addEventListener("click", () => { ls.del("supCode"); code = ""; board = null; showGate(); });
+    /* ---- push for supervisors ---- */
+    function u8(s) { const p = "=".repeat((4 - (s.length % 4)) % 4); const b = atob((s + p).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from(b, (c) => c.charCodeAt(0)); }
+    function pushState() {
+      const ok = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+      $("pushBtn").textContent = T(ok && Notification.permission === "granted" ? "pushDone" : "pushOn");
+      if (ok && Notification.permission === "granted") enablePush(true);
+    }
+    async function enablePush(silent) {
+      try {
+        if (!("serviceWorker" in navigator && "PushManager" in window && "Notification" in window)) { if (!silent) toast(T("pushUnsupported")); return; }
+        if (Notification.permission === "denied") { if (!silent) toast(T("pushDenied")); return; }
+        const reg = await navigator.serviceWorker.register("/sw.js");
+        if (Notification.permission !== "granted") { const p = await Notification.requestPermission(); if (p !== "granted") { if (!silent) toast(T("pushDenied")); return; } }
+        await navigator.serviceWorker.ready;
+        const key = await fetch("/api/vapid-key").then((r) => r.json());
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: u8(key.key) });
+        const sw = reg.active || (await navigator.serviceWorker.ready).active;
+        if (sw) sw.postMessage({ type: "supcode", code });
+        const r = await post("/api/sup/subscribe", { subscription: sub.toJSON(), lang });
+        if (r.body && r.body.ok) { $("pushBtn").textContent = T("pushDone"); if (!silent) toast(T("pushOk")); }
+      } catch { if (!silent) toast(T("pushUnsupported")); }
+    }
+    $("pushBtn").addEventListener("click", () => enablePush(false));
+    $("outBtn").addEventListener("click", () => { try { navigator.serviceWorker.ready.then((r) => r.active && r.active.postMessage({ type: "supcode", code: null })); } catch {} ls.del("supCode"); code = ""; board = null; showGate(); });
 
     async function load(fromGate) {
       if (busy) return;
@@ -173,6 +200,7 @@
         ls.set("supCode", code);
         board = body;
         $("gate").classList.add("hidden"); $("board").classList.remove("hidden"); $("outBtn").classList.remove("hidden");
+        $("pushBtn").classList.remove("hidden"); pushState();
         render();
       } catch {
         if (fromGate) showGate(T("net"));
