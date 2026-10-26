@@ -99,6 +99,7 @@
     </section>
     <section id="board" class="hidden">
       <div style="margin:2px 2px 14px"><h1 id="hello"></h1><div class="muted" id="when"></div></div>
+      <button type="button" id="pushBanner" class="hidden" style="width:100%;margin:0 0 14px;padding:16px;border:0;border-radius:16px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font:inherit;font-size:17px;font-weight:800;box-shadow:0 8px 20px rgba(217,119,6,.3)"></button>
       <div id="list"></div>
     </section>
   </main>
@@ -113,7 +114,7 @@
         noRiders: "لا يوجد مناديب في هذا الشيفت.", confirmBtn: "تأكيد حضور الشيفت", reconfirm: "تحديث التأكيد", confirmed: "أكّدت الشيفت الساعة {t}", other: "{n} أكّد الساعة {t}", waiting: "{n}: لم يؤكد بعد",
         pendingQ: "{n} مندوب لم يؤكدوا الحضور. سيتم تسجيلهم غائبين. متابعة؟", done: "تم تأكيد الشيفت.", early: "لسه بدري على التأكيد.",
         byRider: "أكّد بنفسه {t}", bySup: "سجّله المشرف", lateN: "متأخر {n} د", noApp: "لم يفتح التطبيق", noPush: "الإشعارات متوقفة", notYet: "لم يؤكد بعد",
-        presentBtn: "حاضر", absentBtn: "غائب", pushOn: "🔔 فعّل التنبيهات", pushDone: "🔔 مفعّلة", pushDenied: "التنبيهات محظورة من إعدادات المتصفح.", pushUnsupported: "المتصفح لا يدعم التنبيهات. على الآيفون: أضف الصفحة للشاشة الرئيسية أولاً.", pushOk: "تم تفعيل التنبيهات قبل كل شيفت.",
+        presentBtn: "حاضر", absentBtn: "غائب", pushOn: "🔔 فعّل التنبيهات", pushWhy: "عشان توصلك تنبيهات الشيفتات", pushDone: "🔔 مفعّلة", pushDenied: "التنبيهات محظورة من إعدادات المتصفح.", pushUnsupported: "المتصفح لا يدعم التنبيهات. على الآيفون: أضف الصفحة للشاشة الرئيسية أولاً.", pushOk: "تم تفعيل التنبيهات قبل كل شيفت.",
       },
       en: {
         dir: "ltr", title: "Supervisor", gTitle: "Supervisor sign-in", gSub: "Enter the code you received from management.", go: "Continue", out: "Sign out", bad: "Wrong code.", net: "Could not connect, try again.",
@@ -122,7 +123,7 @@
         noRiders: "No riders in this shift.", confirmBtn: "Confirm shift attendance", reconfirm: "Update confirmation", confirmed: "You confirmed this shift at {t}", other: "{n} confirmed at {t}", waiting: "{n}: not confirmed yet",
         pendingQ: "{n} riders have not confirmed. They will be marked absent. Continue?", done: "Shift confirmed.", early: "Too early to confirm.",
         byRider: "Confirmed by rider {t}", bySup: "Marked by supervisor", lateN: "{n} min late", noApp: "app not opened", noPush: "notifications off", notYet: "not confirmed yet",
-        presentBtn: "Present", absentBtn: "Absent", pushOn: "🔔 Enable alerts", pushDone: "🔔 On", pushDenied: "Notifications are blocked in browser settings.", pushUnsupported: "Notifications are not supported. On iPhone, add this page to the Home Screen first.", pushOk: "Alerts enabled before each shift.",
+        presentBtn: "Present", absentBtn: "Absent", pushOn: "🔔 Enable alerts", pushWhy: "to get shift reminders", pushDone: "🔔 On", pushDenied: "Notifications are blocked in browser settings.", pushUnsupported: "Notifications are not supported. On iPhone, add this page to the Home Screen first.", pushOk: "Alerts enabled before each shift.",
       },
     };
     const $ = (id) => document.getElementById(id);
@@ -169,7 +170,10 @@
     function u8(s) { const p = "=".repeat((4 - (s.length % 4)) % 4); const b = atob((s + p).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from(b, (c) => c.charCodeAt(0)); }
     function pushState() {
       const ok = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
-      $("pushBtn").textContent = T(ok && Notification.permission === "granted" ? "pushDone" : "pushOn");
+      const on = ok && Notification.permission === "granted";
+      $("pushBtn").textContent = T(on ? "pushDone" : "pushOn");
+      $("pushBanner").textContent = T("pushOn") + " - " + T("pushWhy");
+      $("pushBanner").classList.toggle("hidden", on || !ok);
       if (ok && Notification.permission === "granted") enablePush(true);
     }
     async function enablePush(silent) {
@@ -185,10 +189,11 @@
         const sw = reg.active || (await navigator.serviceWorker.ready).active;
         if (sw) sw.postMessage({ type: "supcode", code });
         const r = await post("/api/sup/subscribe", { subscription: sub.toJSON(), lang });
-        if (r.body && r.body.ok) { $("pushBtn").textContent = T("pushDone"); if (!silent) toast(T("pushOk")); }
+        if (r.body && r.body.ok) { $("pushBtn").textContent = T("pushDone"); $("pushBanner").classList.add("hidden"); if (!silent) toast(T("pushOk")); }
       } catch { if (!silent) toast(T("pushUnsupported")); }
     }
     $("pushBtn").addEventListener("click", () => enablePush(false));
+    $("pushBanner").addEventListener("click", () => enablePush(false));
     $("outBtn").addEventListener("click", () => { try { navigator.serviceWorker.ready.then((r) => r.active && r.active.postMessage({ type: "supcode", code: null })); } catch {} ls.del("supCode"); code = ""; board = null; showGate(); });
 
     async function load(fromGate) {
@@ -198,6 +203,7 @@
         if (status === 401 || body.code === "bad_code") { ls.del("supCode"); board = null; return showGate(fromGate ? T("bad") : ""); }
         if (!body.ok) return fromGate ? showGate(T("net")) : null;
         ls.set("supCode", code);
+        try { if (location.search) history.replaceState(null, "", location.pathname); } catch {}
         board = body;
         $("gate").classList.add("hidden"); $("board").classList.remove("hidden"); $("outBtn").classList.remove("hidden");
         $("pushBtn").classList.remove("hidden"); pushState();
