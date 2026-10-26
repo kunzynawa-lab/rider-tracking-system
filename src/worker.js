@@ -585,10 +585,7 @@ async function riderGate(db, now, tz, globalOk) {
 }
 
 async function saveTick(env, v) {
-  await safeRun(
-    env.DB.prepare("INSERT INTO settings (key, value) VALUES ('last_tick', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
-      .bind(JSON.stringify(v))
-  );
+  try { await setSetting(env, "last_tick", JSON.stringify(v)); } catch (e) { console.error("saveTick failed", e && e.message ? e.message : e); }
 }
 
 async function tick(env) {
@@ -780,8 +777,11 @@ async function adminDiagnose(env, now) {
     `SELECT COUNT(*) AS n FROM riders r WHERE r.active = 1 ${gateSql} AND EXISTS (SELECT 1 FROM devices d WHERE d.rider_id = r.id AND d.push_subscription IS NOT NULL)`
   );
   const lastPrompt = await one("SELECT MAX(sent_at) AS at FROM prompts");
+  let settingsErr = null;
+  try { await setSetting(env, "diag_probe", now); } catch (e) { settingsErr = String((e && e.message) || e); }
   const hasKeys = { vapid_public: !!env.VAPID_PUBLIC_KEY, vapid_private: !!env.VAPID_PRIVATE_KEY };
   const problems = [];
+  if (settingsErr) problems.push("Cannot write to the settings table (online status and scheduler log need it): " + settingsErr);
   if (!hasKeys.vapid_private) problems.push("VAPID_PRIVATE_KEY secret is missing");
   if (!last) problems.push("The scheduler has not run yet (check Triggers -> Cron in Cloudflare)");
   else if (now - last.at > 5 * MIN) problems.push("The scheduler last ran more than 5 minutes ago");
@@ -816,7 +816,7 @@ async function adminSetRiderSup(env, body) {
   const rid = String((body && body.rider_id) || "").trim();
   if (!rid) return fail("bad_request", "rider_id required", 400);
   const sid = body && body.sup_id ? Number(body.sup_id) : 0;
-  if (sid) await env.DB.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind("rsup:" + rid, String(sid)).run();
+  if (sid) await setSetting(env, "rsup:" + rid, sid);
   else await env.DB.prepare("DELETE FROM settings WHERE key = ?").bind("rsup:" + rid).run();
   return json({ ok: true });
 }
@@ -840,6 +840,20 @@ const byKey = (rows, key = "rider_id") => {
   for (const r of (rows && rows.results) || []) m.set(r[key], r);
   return m;
 };
+
+// upsert that does not depend on a UNIQUE constraint existing on settings.key
+async function setSetting(env, key, value) {
+  let u;
+  try {
+    u = await env.DB.prepare("UPDATE settings SET value = ? WHERE key = ?").bind(String(value), key).run();
+  } catch {
+    // the table may be missing if an old migration was not fully applied
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)").run();
+    u = await env.DB.prepare("UPDATE settings SET value = ? WHERE key = ?").bind(String(value), key).run();
+  }
+  const ch = u && u.meta ? u.meta.changes : 0;
+  if (!ch) await env.DB.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").bind(key, String(value)).run();
+}
 
 async function safeAll(stmt) {
   try {
@@ -2233,10 +2247,7 @@ export default {
       const device = await getDevice(env, body.token);
       if (!device) return json({ ok: false }, 401);
       const rider = await env.DB.prepare("SELECT id, name FROM riders WHERE id = ?").bind(device.rider_id).first();
-      await safeRun(
-        env.DB.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
-          .bind("seen:" + device.rider_id, String(now))
-      );
+      try { await setSetting(env, "seen:" + device.rider_id, now); } catch (e) { console.error("heartbeat failed", e && e.message ? e.message : e); }
       const state = await riderState(env, device.rider_id, now);
       const shift = await riderShift(env, device.rider_id, now, cfg(env));
       return json({
