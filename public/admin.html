@@ -148,6 +148,8 @@
     .stack-bar i { display: block; height: 100%; }
     .cnts { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; }
     .cnts b { font-size: 16px; }
+    .cbtn { border: 1px solid var(--line, #d7dde5); background: transparent; color: inherit; border-radius: 999px; padding: 4px 10px; font-size: 13px; cursor: pointer; }
+    .cbtn.on { background: var(--brand-soft); border-color: var(--brand); }
     .rl { border-top: 1px solid var(--line); margin: 0 -16px -14px; max-height: 320px; overflow: auto; }
     .rl table th, .rl table td { padding: 7px 14px; white-space: normal; }
     .h2row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 6px 0 10px; flex-wrap: wrap; }
@@ -490,6 +492,7 @@
   };
 
   Object.assign(I18N.en, {
+    c_noapp: "Not opened app",
     delRider: "Delete", delOneQ: "Delete rider {id} and all of his data? This cannot be undone.", delAll: "Delete all riders except…", delAllAsk: "Enter the IDs to KEEP (comma separated). Everyone else will be deleted with all their data.", delAllQ: "Delete {n} riders permanently? This cannot be undone.", delDone: "Deleted {n} riders.", delNone: "Nobody to delete.",
     schTitle: "All rider shifts (next 7 days)", schNone: "—", schRider: "Rider", onOrder: "On order",
     navShifts: "Shifts", navInc: "Incentives", refresh: "Refresh", edit: "Edit", delete: "Delete", yes: "Yes",
@@ -516,6 +519,7 @@
     addHelp2: "Upload an Excel/CSV file (column 1 = ID, column 2 = name, column 3 = shift name or number, optional), or paste from Excel, or type one rider per line: ID, name, shift. Only riders added here can open the app.",
   });
   Object.assign(I18N.ar, {
+    c_noapp: "لم يفتح التطبيق",
     delRider: "حذف", delOneQ: "حذف المندوب {id} وكل بياناته؟ لا يمكن التراجع.", delAll: "حذف الكل ما عدا…", delAllAsk: "اكتب أرقام المناديب التي تريد الإبقاء عليها (مفصولة بفاصلة). كل الباقين سيُحذفون مع بياناتهم.", delAllQ: "حذف {n} مندوب نهائياً؟ لا يمكن التراجع.", delDone: "تم حذف {n} مندوب.", delNone: "لا يوجد من يُحذف.",
     schTitle: "شيفتات كل المناديب (الأيام السبعة القادمة)", schNone: "—", schRider: "المندوب", onOrder: "معه طلب",
     navShifts: "الشيفتات", navInc: "الحوافز", refresh: "تحديث", edit: "تعديل", delete: "حذف", yes: "نعم",
@@ -568,7 +572,7 @@
     return Math.floor(h / 24) + T("day") + " " + (h % 24) + T("hr");
   };
   const ago = (ms, now) => (ms ? (now - ms < 45000 ? T("now") : T("ago", { d: dur(now - ms) })) : T("never"));
-  const hhmm = (ms) => (ms ? new Date(ms).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "–");
+  const hhmm = (ms) => (ms ? new Date(ms).toLocaleTimeString("en-GB", { timeZone: "Asia/Riyadh", hour: "2-digit", minute: "2-digit" }) : "–");
   const pct = (x) => (x == null ? "–" : Math.round(x * 100) + "%");
 
   function toast(text) {
@@ -797,7 +801,7 @@
     renderRanges();
     try { report = await api("/api/admin/report?range=" + range); renderReport(); } catch (e) { handleErr(e); }
   }
-  const fmtDate = (ms) => new Date(ms).toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+  const fmtDate = (ms) => new Date(ms).toLocaleDateString("en-GB", { timeZone: "Asia/Riyadh", day: "2-digit", month: "short" });
 
   function renderReport() {
     if (!report) return;
@@ -1147,7 +1151,7 @@
     try {
       perfList = await api("/api/admin/performance");
       const m = perfList.meta;
-      $("perfSub").textContent = m.count ? T("lastUpload", { t: new Date(m.uploaded_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }), n: m.count }) : T("noPerf");
+      $("perfSub").textContent = m.count ? T("lastUpload", { t: new Date(m.uploaded_at).toLocaleString("en-GB", { timeZone: "Asia/Riyadh", dateStyle: "medium", timeStyle: "short" }), n: m.count }) : T("noPerf");
       if (!metaOnly) renderPerfData();
     } catch (e) { handleErr(e); }
   }
@@ -1231,8 +1235,10 @@
   /* ===================== Shifts & supervisors ===================== */
   let shiftsData = null;
   const openRiders = new Set();
+  const rlFilter = new Map();
+  const RF = { all: () => true, present: (r, g) => r.status === "present" && !(r.late_min >= g), late: (r, g) => r.status === "present" && r.late_min >= g, absent: (r) => r.status === "absent", pending: (r) => r.status === "pending", noapp: (r) => !r.app };
   const cp = (text) => { try { return navigator.clipboard.writeText(text); } catch { return Promise.reject(); } };
-  const ymd = (ms) => new Date(ms).toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short" });
+  const ymd = (ms) => new Date(ms).toLocaleDateString("en-GB", { timeZone: "Asia/Riyadh", weekday: "short", day: "2-digit", month: "short" });
 
   async function loadShifts() {
     try { shiftsData = await api("/api/admin/shifts"); renderShifts(); } catch (e) { handleErr(e); }
@@ -1266,7 +1272,7 @@
     if (!d) return;
     const now = d.now;
     const nameOf = new Map(d.supervisors.map((x) => [x.id, x.name]));
-    const today = new Date(now).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", { weekday: "long", day: "numeric", month: "long" });
+    const today = new Date(now).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", { timeZone: "Asia/Riyadh", weekday: "long", day: "numeric", month: "long" });
     $("shSub").textContent = T("shSub", { t: today, n: d.supervisors.filter((x) => x.active).length });
     $("shHelp").textContent = T("shHelp", { l: d.config.lead, e: d.config.nag });
 
@@ -1287,18 +1293,25 @@
         const w = (n) => (n / c.total * 100).toFixed(1) + "%";
         const ontime = c.present - c.late;
         body = `<div class="stack-bar"><i style="width:${w(ontime)};background:var(--green)"></i><i style="width:${w(c.late)};background:var(--amber)"></i><i style="width:${w(c.absent)};background:var(--red)"></i></div>
-          <div class="cnts"><span><b class="sev-ok">${c.present}</b> ${esc(T("c_present"))}</span><span><b class="sev-mid">${c.late}</b> ${esc(T("c_late"))}</span><span><b class="sev-hi">${c.absent}</b> ${esc(T("c_absent"))}</span><span><b>${c.pending}</b> ${esc(T("c_pending"))}</span></div>`;
+          <div class="cnts">${[["present", "sev-ok", c.present - c.late, "c_present"], ["late", "sev-mid", c.late, "c_late"], ["absent", "sev-hi", c.absent, "c_absent"], ["pending", "", c.pending, "c_pending"], ["noapp", "sev-hi", s.riders.filter((r) => !r.app).length, "c_noapp"]].map(([k, cl, n, lab]) => `<button type="button" class="cbtn${rlFilter.get(s.id) === k && openRiders.has(s.id) ? " on" : ""}" data-rf="${s.id}|${k}"><b class="${cl}">${n}</b> ${esc(T(lab))}</button>`).join("")}</div>`;
       } else {
         body = `<div class="muted">${esc(T("noShiftRiders"))}</div>`;
       }
       const isOpen = openRiders.has(s.id);
-      const list = isOpen && s.riders.length ? `<div class="rl"><table><tbody>${s.riders.map((r) => riderRow(r, d.grace)).join("")}</tbody></table></div>` : "";
+      const flt = RF[rlFilter.get(s.id) || "all"] || RF.all;
+      const shown = s.riders.filter((r) => flt(r, d.grace));
+      const list = isOpen && s.riders.length ? `<div class="rl"><table><tbody>${shown.length ? shown.map((r) => riderRow(r, d.grace)).join("") : `<tr><td class="empty">${esc(T("noRiders"))}</td></tr>`}</tbody></table></div>` : "";
       return `<div class="card shcard${unconf ? " alert" : ""}"><header><div><h2>${esc(s.name)}</h2><div class="muted num">${esc(s.start)} – ${esc(s.end)}</div></div><span class="badge ${unconf ? "b-late" : ph.cls}">${esc(unconf ? T("ph_notconf") : ph.text)}</span></header>
         <div class="bd"><div class="sups">${sups}</div>${body}
         ${s.riders.length ? `<div><button class="btn ghost sm" data-rl="${s.id}">${esc(T("showRiders"))} (${s.riders.length}) ${isOpen ? "▴" : "▾"}</button></div>` : ""}${list}</div></div>`;
     }).join("") : `<div class="card empty">${esc(T("noShifts"))}</div>`;
+    $("shGrid").querySelectorAll("[data-rf]").forEach((b) => b.addEventListener("click", () => {
+      const [id, k] = b.dataset.rf.split("|"), sid = +id;
+      if (openRiders.has(sid) && rlFilter.get(sid) === k) openRiders.delete(sid); else { openRiders.add(sid); rlFilter.set(sid, k); }
+      renderShifts();
+    }));
     $("shAlerts").innerHTML = alerts.map((a) => `<div class="card" style="padding:10px 14px;margin-bottom:8px;border-color:var(--red);background:var(--red-soft)">⚠️ ${esc(a)}</div>`).join("");
-    $("shGrid").querySelectorAll("[data-rl]").forEach((b) => b.addEventListener("click", () => { const id = +b.dataset.rl; openRiders.has(id) ? openRiders.delete(id) : openRiders.add(id); renderShifts(); }));
+    $("shGrid").querySelectorAll("[data-rl]").forEach((b) => b.addEventListener("click", () => { const id = +b.dataset.rl; openRiders.has(id) ? openRiders.delete(id) : (openRiders.add(id), rlFilter.set(id, "all")); renderShifts(); }));
 
     // setup: shifts
     $("shHead").innerHTML = ["sh_col_name", "sh_col_time", "sh_col_sups", "sh_col_riders", "sh_col_active", ""].map((k) => `<th>${k ? esc(T(k)) : ""}</th>`).join("");
