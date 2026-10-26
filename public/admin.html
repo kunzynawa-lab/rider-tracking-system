@@ -377,7 +377,7 @@
       <h2 style="font-size:18px;margin-bottom:12px" id="shDlgTitle"></h2>
       <div style="display:grid;gap:10px">
         <label><span class="muted" data-i="shName"></span><input id="shfName" maxlength="40"></label>
-        <div style="display:flex;gap:10px"><label style="flex:1"><span class="muted" data-i="shStart"></span><input id="shfStart" type="time" required></label><label style="flex:1"><span class="muted" data-i="shEnd"></span><input id="shfEnd" type="time" required></label></div>
+        <div style="display:flex;gap:10px"><label style="flex:1"><span class="muted" data-i="shStart"></span><select id="shfStart" class="t24" required></select></label><label style="flex:1"><span class="muted" data-i="shEnd"></span><select id="shfEnd" class="t24" required></select></label></div>
         <div><span class="muted" data-i="shSups"></span><div id="shfSups"></div></div>
         <label class="check"><input type="checkbox" id="shfActive"><span data-i="shActive"></span></label>
       </div>
@@ -507,7 +507,7 @@
     shDlgNew: "New shift", shDlgEdit: "Edit shift", shName: "Shift name", shStart: "Start", shEnd: "End", shSups: "Supervisors (usually 2)", shActive: "Active",
     shSaved: "Saved.", shDeleteQ: "Delete this shift? Its riders will become unassigned.", shBad: "Enter a name and different start and end times.",
     supCopy: "Copy invite", supCopied: "Invite copied.", supRegen: "New code", supRegenQ: "Generate a new code? The old one stops working.", supDeleteQ: "Delete this supervisor?",
-    supInvite: "Supervisor page: {u}\nYour code: {c}", noSups: "No supervisors yet.", noShifts: "No shifts.",
+    supInvite: "Link supervisor page (open it, you are in): {u}\nCode if asked: {c}", noSups: "No supervisors yet.", noShifts: "No shifts.",
     hi_day: "Day", hi_shift: "Shift", hi_present: "Present", hi_absent: "Absent", hi_conf: "Supervisor confirmations", noHist: "No attendance recorded yet.",
     r_in_time: "on time", r_late_n: "{n} min late", r_notyet: "not confirmed", r_noapp: "app not opened", r_nopush: "notifications off", by_rider: "by rider", by_sup: "by supervisor",
     alertNoConf: "{n}: no supervisor has confirmed attendance yet.", alertPend: "{n}: {p} riders have not confirmed.",
@@ -534,7 +534,7 @@
     shDlgNew: "شيفت جديد", shDlgEdit: "تعديل الشيفت", shName: "اسم الشيفت", shStart: "البداية", shEnd: "النهاية", shSups: "المشرفون (عادةً 2)", shActive: "نشط",
     shSaved: "تم الحفظ.", shDeleteQ: "حذف هذا الشيفت؟ سيصبح مناديبه بلا شيفت.", shBad: "اكتب الاسم ووقت بداية ونهاية مختلفين.",
     supCopy: "نسخ الدعوة", supCopied: "تم نسخ الدعوة.", supRegen: "كود جديد", supRegenQ: "إنشاء كود جديد؟ الكود القديم سيتوقف.", supDeleteQ: "حذف هذا المشرف؟",
-    supInvite: "صفحة المشرف: {u}\nالكود الخاص بك: {c}", noSups: "لا يوجد مشرفون بعد.", noShifts: "لا توجد شيفتات.",
+    supInvite: "افتح الرابط ده وهتدخل على طول: {u}\nالكود لو طلبه: {c}", noSups: "لا يوجد مشرفون بعد.", noShifts: "لا توجد شيفتات.",
     hi_day: "اليوم", hi_shift: "الشيفت", hi_present: "حاضر", hi_absent: "غائب", hi_conf: "تأكيدات المشرفين", noHist: "لا يوجد حضور مسجّل بعد.",
     r_in_time: "في الوقت", r_late_n: "متأخر {n} د", r_notyet: "لم يؤكد", r_noapp: "لم يفتح التطبيق", r_nopush: "الإشعارات متوقفة", by_rider: "من المندوب", by_sup: "من المشرف",
     alertNoConf: "{n}: لم يؤكد أي مشرف الحضور حتى الآن.", alertPend: "{n}: {p} مندوب لم يؤكدوا.",
@@ -1240,6 +1240,17 @@
   const cp = (text) => { try { return navigator.clipboard.writeText(text); } catch { return Promise.reject(); } };
   const ymd = (ms) => new Date(ms).toLocaleDateString("en-GB", { timeZone: "Asia/Riyadh", weekday: "short", day: "2-digit", month: "short" });
 
+  // 24-hour time dropdowns (native time inputs show AM/PM on many devices)
+  function fillTimes(sel, val) {
+    let o = '<option value="">--:--</option>', found = !val;
+    for (let m = 0; m < 1440; m += 5) {
+      const t = String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+      if (t === val) found = true;
+      o += `<option value="${t}">${t}</option>`;
+    }
+    if (!found) o += `<option value="${esc(val)}">${esc(val)}</option>`;
+    sel.innerHTML = o; sel.value = val || "";
+  }
   async function loadShifts() {
     try { shiftsData = await api("/api/admin/shifts"); renderShifts(); } catch (e) { handleErr(e); }
     try { renderSchedules(await api("/api/admin/schedules")); } catch (e) { /* optional */ }
@@ -1329,7 +1340,7 @@
     const sup = (b, k) => d.supervisors.find((x) => x.id === +b.dataset[k]);
     $("supBody").querySelectorAll("[data-cp]").forEach((b) => b.addEventListener("click", () => {
       const u = sup(b, "cp");
-      cp(T("supInvite", { u: location.origin + "/sup", c: u.code })).then(() => toast(T("supCopied")), () => prompt("", T("supInvite", { u: location.origin + "/sup", c: u.code })));
+      cp(T("supInvite", { u: location.origin + "/sup?c=" + u.code, c: u.code })).then(() => toast(T("supCopied")), () => prompt("", T("supInvite", { u: location.origin + "/sup?c=" + u.code, c: u.code })));
     }));
     $("supBody").querySelectorAll("[data-rg]").forEach((b) => b.addEventListener("click", async () => {
       if (!confirm(T("supRegenQ"))) return;
@@ -1358,8 +1369,7 @@
     editShiftId = s ? s.id : 0;
     $("shDlgTitle").textContent = T(s ? "shDlgEdit" : "shDlgNew");
     $("shfName").value = s ? s.name : "";
-    $("shfStart").value = s ? s.start : "";
-    $("shfEnd").value = s ? s.end : "";
+    fillTimes($("shfStart"), s ? s.start : ""); fillTimes($("shfEnd"), s ? s.end : "");
     $("shfActive").checked = s ? s.active : true;
     $("shfDelete").classList.toggle("hidden", !s);
     $("shfErr").textContent = "";
