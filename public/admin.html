@@ -76,6 +76,8 @@
     .card > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
     .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
     .kpi { padding: 14px 16px; }
+    .kpi.click { cursor: pointer; transition: transform .12s, box-shadow .12s; }
+    .kpi.click:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(15,27,45,.14); }
     .kpi .v { font-size: 26px; font-weight: 700; line-height: 1.2; margin-top: 4px; }
     .kpi .s { font-size: 12.5px; color: var(--muted); }
     .kpi.warn .v { color: var(--red); } .kpi.good .v { color: var(--green); }
@@ -113,7 +115,7 @@
     .idle-sum b { font-size: 15px; }
     .empty { padding: 26px 16px; text-align: center; color: var(--muted); }
 
-    #map { height: 400px; border-radius: 0 0 14px 14px; z-index: 0; }
+    #map { height: min(62vh, 560px); min-height: 380px; border-radius: 0 0 14px 14px; z-index: 0; }
     .legend { display: flex; gap: 12px; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--line); font-size: 12.5px; color: var(--muted); }
     .legend span { display: inline-flex; align-items: center; gap: 5px; }
     .legend i { font-style: normal; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font-size: 12px; color: #fff; }
@@ -216,6 +218,11 @@
           <button class="btn ghost sm" id="diagBtn" data-i="diagBtn"></button>
         </div>
         <div class="kpis" id="liveKpis"></div>
+        <div class="card" style="margin-bottom:16px">
+          <header><h2 data-i="map"></h2><span class="muted" id="mapCount"></span></header>
+          <div class="legend" id="legend"></div>
+          <div id="map"></div>
+        </div>
         <div class="grid2">
           <div class="stack">
             <div class="card">
@@ -229,11 +236,6 @@
             </div>
           </div>
           <div class="stack">
-            <div class="card">
-              <header><h2 data-i="map"></h2><span class="muted" id="mapCount"></span></header>
-              <div class="legend" id="legend"></div>
-              <div id="map"></div>
-            </div>
             <div class="card"><header><h2 data-i="activity"></h2></header><div class="feed"><ul id="feed"></ul></div></div>
           </div>
         </div>
@@ -373,6 +375,12 @@
     </main>
   </div>
 
+  <dialog id="grpDlg" style="width:min(640px,94vw)">
+    <h2 style="font-size:18px;margin-bottom:10px" id="grpTitle"></h2>
+    <div class="scroll" style="max-height:60vh"><table><thead><tr><th data-i="c_rider"></th><th data-i="c_online"></th><th data-i="c_openedapp"></th><th data-i="c_status"></th><th data-i="c_notif"></th></tr></thead><tbody id="grpBody"></tbody></table></div>
+    <div style="margin-top:14px"><button class="btn ghost" id="grpClose" data-i="diagClose"></button></div>
+  </dialog>
+
   <dialog id="diagDlg">
     <h2 style="font-size:18px;margin-bottom:12px" data-i="diagTitle"></h2>
     <div id="diagBody" style="font-size:14.5px;line-height:1.9"></div>
@@ -499,6 +507,7 @@
   };
 
   Object.assign(I18N.en, {
+    offline: "Offline", c_online: "Online", c_openedapp: "Last opened app",
     f_online: "Online now", f_sched: "On shift now", f_sched_off: "On shift, not online", f_declared: "On order",
     k_sched: "On shift now", s_sched: "riders inside their shift", k_online: "Online now", s_online: "opened the app in the last 3 min", k_schedoff: "On shift, not online", s_schedoff: "did not open the app",
     diagBtn: "🔔 Notification check", diagTitle: "Notification check", testBtn: "Send test notification to all", diagClose: "Close", diagOk: "Everything looks fine.",
@@ -530,6 +539,7 @@
     addHelp2: "Upload an Excel/CSV file (column 1 = ID, column 2 = name, column 3 = shift name or number, optional), or paste from Excel, or type one rider per line: ID, name, shift. Only riders added here can open the app.",
   });
   Object.assign(I18N.ar, {
+    offline: "غير متصل", c_online: "الاتصال", c_openedapp: "آخر فتح للتطبيق",
     f_online: "أونلاين الآن", f_sched: "في شيفته الآن", f_sched_off: "في شيفته ولم يفتح", f_declared: "معه طلب",
     k_sched: "في شيفته الآن", s_sched: "مندوب داخل شيفته", k_online: "أونلاين الآن", s_online: "فتحوا التطبيق خلال آخر 3 دقائق", k_schedoff: "في شيفته ولم يفتح", s_schedoff: "لم يفتحوا التطبيق",
     diagBtn: "🔔 فحص الإشعارات", diagTitle: "فحص الإشعارات", testBtn: "ابعت إشعار تجريبي للكل", diagClose: "إغلاق", diagOk: "كل شيء سليم.",
@@ -697,8 +707,21 @@
     }).join("");
     $("filters").querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => { filter = b.dataset.f; renderLive(); }));
   }
-  function kpi(label, value, sub, cls = "") {
-    return `<div class="card kpi ${cls}"><h3>${esc(label)}</h3><div class="v num">${value}</div><div class="s">${esc(sub || "")}</div></div>`;
+  function kpi(label, value, sub, cls = "", grp = "") {
+    return `<div class="card kpi ${cls}${grp ? " click" : ""}"${grp ? ` data-grp="${grp}" role="button" tabindex="0"` : ""}><h3>${esc(label)}</h3><div class="v num">${value}</div><div class="s">${esc(sub || "")}${grp ? " ›" : ""}</div></div>`;
+  }
+  function openGroup(g) {
+    const rows = overview.riders.filter((r) => matchFilter(r, g)).sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true }));
+    $("grpTitle").textContent = T("f_" + g) + " · " + rows.length;
+    $("grpBody").innerHTML = rows.length ? rows.map((r) => {
+      const seen = r.seen_at ? ago(r.seen_at, overview.now) : T("never");
+      return `<tr><td><div class="rname">${esc(r.name || r.id)}</div><div class="rid">#${esc(r.id)}</div></td>
+        <td>${r.online ? `<span class="badge b-green">● ${esc(T("f_online"))}</span>` : `<span class="badge b-idle">${esc(T("offline"))}</span>`}</td>
+        <td class="num">${esc(seen)}</td>
+        <td><span class="badge b-${r.state}">${PIN[r.state].icon} ${esc(T("st_" + r.state))}</span></td>
+        <td>${r.push ? "🔔" : `<span class="badge b-late">${esc(T("off"))}</span>`}</td></tr>`;
+    }).join("") : `<tr><td colspan="5" class="empty">${esc(T("noRiders"))}</td></tr>`;
+    $("grpDlg").showModal();
   }
 
   function renderLive() {
@@ -707,15 +730,16 @@
     $("updated").textContent = T("updatedAt", { t: hhmm(o.now) });
     renderFilters();
     $("liveKpis").innerHTML =
-      kpi(T("k_sched"), s.scheduled, T("s_sched")) +
-      kpi(T("k_online"), s.online, T("s_online"), "good") +
-      kpi(T("k_schedoff"), s.sched_offline, T("s_schedoff"), s.sched_offline ? "warn" : "") +
+      kpi(T("k_sched"), s.scheduled, T("s_sched"), "", "sched") +
+      kpi(T("k_online"), s.online, T("s_online"), "good", "online") +
+      kpi(T("k_schedoff"), s.sched_offline, T("s_schedoff"), s.sched_offline ? "warn" : "", "sched_off") +
       kpi(T("k_total"), s.total, T("s_total")) +
       kpi(T("k_order"), s.with_order, T("s_order", { p: s.total ? Math.round((s.with_order / s.total) * 100) : 0 })) +
       kpi(T("k_idle"), s.idle, T("s_idle"), s.idle && s.total && s.idle / s.total > 0.5 ? "warn" : "") +
       kpi(T("k_deliv"), s.delivered_today, T("s_deliv"), "good") +
       kpi(T("k_late"), s.late, T("s_late"), s.late ? "warn" : "") +
       kpi(T("k_push"), s.push_off, T("s_push"), s.push_off ? "warn" : "");
+    $("liveKpis").querySelectorAll("[data-grp]").forEach((k) => { const go = () => openGroup(k.dataset.grp); k.addEventListener("click", go); k.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } }); });
     renderIdle(o); renderRiders(o); renderMap(o); renderFeed(o);
   }
 
@@ -1286,6 +1310,7 @@
       if (!$("diagDlg").open) $("diagDlg").showModal();
     } catch (e) { handleErr(e); }
   }
+  $("grpClose").addEventListener("click", () => $("grpDlg").close());
   $("diagBtn").addEventListener("click", () => openDiag());
   $("diagClose").addEventListener("click", () => $("diagDlg").close());
   $("diagTest").addEventListener("click", async () => {
