@@ -583,6 +583,13 @@ async function riderGate(db, now, tz, globalOk) {
   )`;
 }
 
+async function saveTick(env, v) {
+  await safeRun(
+    env.DB.prepare("INSERT INTO settings (key, value) VALUES ('last_tick', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+      .bind(JSON.stringify(v))
+  );
+}
+
 async function tick(env) {
   const now = Date.now();
   const c = cfg(env);
@@ -753,6 +760,57 @@ async function tick(env) {
   return out;
 }
 
+async function adminDiagnose(env, now) {
+  const c = cfg(env);
+  const tz = tzParts(now, c.TIMEZONE);
+  const db = env.DB;
+  const one = async (q) => {
+    try { return (await db.prepare(q).first()) || {}; } catch (e) { return { error: String(e.message || e) }; }
+  };
+  const lt = await one("SELECT value FROM settings WHERE key = 'last_tick'");
+  let last = null;
+  try { last = lt.value ? JSON.parse(lt.value) : null; } catch {}
+  const globalOk = inWorkHours(tz.hour, c.WORK_START_HOUR, c.WORK_END_HOUR);
+  const gateSql = await riderGate(db, now, tz, globalOk);
+  const riders = await one("SELECT COUNT(*) AS n FROM riders WHERE active = 1");
+  const withPush = await one("SELECT COUNT(DISTINCT rider_id) AS n FROM devices WHERE push_subscription IS NOT NULL");
+  const eligible = await one(`SELECT COUNT(*) AS n FROM riders r WHERE r.active = 1 ${gateSql}`);
+  const eligiblePush = await one(
+    `SELECT COUNT(*) AS n FROM riders r WHERE r.active = 1 ${gateSql} AND EXISTS (SELECT 1 FROM devices d WHERE d.rider_id = r.id AND d.push_subscription IS NOT NULL)`
+  );
+  const lastPrompt = await one("SELECT MAX(sent_at) AS at FROM prompts");
+  const hasKeys = { vapid_public: !!env.VAPID_PUBLIC_KEY, vapid_private: !!env.VAPID_PRIVATE_KEY };
+  const problems = [];
+  if (!hasKeys.vapid_private) problems.push("VAPID_PRIVATE_KEY secret is missing");
+  if (!last) problems.push("The scheduler has not run yet (check Triggers -> Cron in Cloudflare)");
+  else if (now - last.at > 5 * MIN) problems.push("The scheduler last ran more than 5 minutes ago");
+  else if (last.ok === false) problems.push("Last run failed: " + last.error);
+  if (!withPush.n) problems.push("No rider has enabled notifications on his phone");
+  else if (!eligiblePush.n) problems.push("No rider with notifications is inside his shift / working hours right now");
+  return {
+    ok: true, now, timezone: c.TIMEZONE, local_time: String(tz.hour).padStart(2, "0") + ":" + String(tz.minute).padStart(2, "0"),
+    work_hours: c.WORK_START_HOUR + "-" + c.WORK_END_HOUR, general_hours_open: globalOk,
+    riders: riders.n, with_push: withPush.n, eligible_now: eligible.n, eligible_with_push: eligiblePush.n,
+    last_prompt_at: lastPrompt.at || null, last_tick: last, keys: hasKeys, problems,
+  };
+}
+
+async function adminTestPush(env, now) {
+  const rows = await safeAll(env.DB.prepare(
+    `SELECT d.rider_id AS rider_id, d.push_subscription AS sub, d.id AS id FROM devices d
+     WHERE d.push_subscription IS NOT NULL AND d.id = (SELECT MAX(d2.id) FROM devices d2 WHERE d2.rider_id = d.rider_id AND d2.push_subscription IS NOT NULL) LIMIT 40`
+  ));
+  let sent = 0, failed = 0;
+  const codes = {};
+  await Promise.all(rows.map(async (r) => {
+    let sub; try { sub = JSON.parse(r.sub); } catch { failed++; return; }
+    const st = await sendPush(sub, env, 120);
+    codes[st] = (codes[st] || 0) + 1;
+    if (st >= 200 && st < 300) sent++; else { failed++; if (st === 404 || st === 410) await safeRun(env.DB.prepare("UPDATE devices SET push_subscription = NULL WHERE id = ?").bind(r.id)); }
+  }));
+  return { ok: true, total: rows.length, sent, failed, codes };
+}
+
 /* ---------------------------- Admin ---------------------------- */
 async function sha256(s) {
   return new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)));
@@ -772,6 +830,15 @@ const byKey = (rows, key = "rider_id") => {
   for (const r of (rows && rows.results) || []) m.set(r[key], r);
   return m;
 };
+
+async function safeAll(stmt) {
+  try {
+    const r = await stmt.all();
+    return (r && r.results) || [];
+  } catch {
+    return [];
+  }
+}
 
 async function adminOverview(env, now) {
   const c = cfg(env);
@@ -819,6 +886,11 @@ async function adminOverview(env, now) {
       .all(),
   ]);
 
+  const seenRows = await safeAll(db.prepare("SELECT key, value FROM settings WHERE key LIKE 'seen:%'"));
+  const seenMap = new Map(seenRows.map((x) => [x.key.slice(5), Number(x.value)]));
+  const c2 = cfg(env);
+  const gateSql = await riderGate(db, now, tz, false);
+  const shiftNow = new Set((await safeAll(db.prepare(`SELECT r.id AS id FROM riders r WHERE r.active = 1 ${gateSql}`))).map((x) => x.id));
   const orderMap = byKey(orders);
   const locMap = byKey(locs);
   const pushSet = new Set(((pushes && pushes.results) || []).map((r) => r.rider_id));
@@ -841,6 +913,9 @@ async function adminOverview(env, now) {
       prompt: p ? { type: p.type, status: p.status, sent_at: p.sent_at } : null,
       late: !!(p && p.status === "missed"),
       push: pushSet.has(r.id),
+      seen_at: seenMap.get(r.id) || null,
+      online: !!(seenMap.get(r.id) && now - seenMap.get(r.id) <= 3 * MIN) || !!o,
+      scheduled: shiftNow.has(r.id),
       delivered_today: deliveredMap.has(r.id) ? deliveredMap.get(r.id).n : 0,
       missed_today: missedMap.has(r.id) ? missedMap.get(r.id).n : 0,
     };
@@ -855,6 +930,9 @@ async function adminOverview(env, now) {
     delivered_today: list.reduce((s, r) => s + r.delivered_today, 0),
     late: list.filter((r) => r.late).length,
     push_off: list.filter((r) => !r.push).length,
+    online: list.filter((r) => r.online).length,
+    scheduled: list.filter((r) => r.scheduled).length,
+    sched_offline: list.filter((r) => r.scheduled && !r.online).length,
     longest_idle_ms: idleDurations.length ? Math.max(...idleDurations) : 0,
     avg_idle_ms: idleDurations.length ? Math.round(idleDurations.reduce((a, b) => a + b, 0) / idleDurations.length) : 0,
   };
@@ -2136,6 +2214,10 @@ export default {
       const device = await getDevice(env, body.token);
       if (!device) return json({ ok: false }, 401);
       const rider = await env.DB.prepare("SELECT id, name FROM riders WHERE id = ?").bind(device.rider_id).first();
+      await safeRun(
+        env.DB.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+          .bind("seen:" + device.rider_id, String(now))
+      );
       const state = await riderState(env, device.rider_id, now);
       const shift = await riderShift(env, device.rider_id, now, cfg(env));
       return json({
@@ -2374,6 +2456,8 @@ export default {
           .run();
         return json({ ok: true });
       }
+      if (path === "/api/admin/diagnose" && request.method === "GET") return json(await adminDiagnose(env, now));
+      if (path === "/api/admin/testpush" && request.method === "POST") return json(await adminTestPush(env, now));
       if (path === "/api/admin/riders/delete" && request.method === "POST") {
         const body = await readBody(request);
         if (!body) return json({ ok: false }, 400);
@@ -2440,8 +2524,14 @@ export default {
   async scheduled(event, env, ctx) {
     ctx.waitUntil(
       tick(env).then(
-        (r) => console.log("tick", JSON.stringify(r)),
-        (e) => console.error("tick failed", e && e.message ? e.message : e)
+        async (r) => {
+          console.log("tick", JSON.stringify(r));
+          await saveTick(env, { at: Date.now(), ok: true, r });
+        },
+        async (e) => {
+          console.error("tick failed", e && e.message ? e.message : e);
+          await saveTick(env, { at: Date.now(), ok: false, error: String((e && e.message) || e) });
+        }
       )
     );
   },
