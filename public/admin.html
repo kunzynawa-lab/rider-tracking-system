@@ -213,6 +213,7 @@
         <div class="head">
           <div><h1 data-i="liveTitle"></h1><div class="sub"><span class="live-dot"></span><span id="updated"></span></div></div>
           <div class="chips" id="filters"></div>
+          <button class="btn ghost sm" id="diagBtn" data-i="diagBtn"></button>
         </div>
         <div class="kpis" id="liveKpis"></div>
         <div class="grid2">
@@ -372,6 +373,12 @@
     </main>
   </div>
 
+  <dialog id="diagDlg">
+    <h2 style="font-size:18px;margin-bottom:12px" data-i="diagTitle"></h2>
+    <div id="diagBody" style="font-size:14.5px;line-height:1.9"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap"><button class="btn" id="diagTest" data-i="testBtn"></button><button class="btn ghost" id="diagClose" data-i="diagClose"></button></div>
+  </dialog>
+
   <dialog id="shiftDlg">
     <form method="dialog" id="shiftForm">
       <h2 style="font-size:18px;margin-bottom:12px" id="shDlgTitle"></h2>
@@ -492,6 +499,10 @@
   };
 
   Object.assign(I18N.en, {
+    f_online: "Online now", f_sched: "On shift now", f_sched_off: "On shift, not online", f_declared: "On order",
+    k_sched: "On shift now", s_sched: "riders inside their shift", k_online: "Online now", s_online: "opened the app in the last 3 min", k_schedoff: "On shift, not online", s_schedoff: "did not open the app",
+    diagBtn: "🔔 Notification check", diagTitle: "Notification check", testBtn: "Send test notification to all", diagClose: "Close", diagOk: "Everything looks fine.",
+    dg_time: "Local time", dg_riders: "Active riders", dg_push: "Riders with notifications on", dg_elig: "Eligible to be asked now", dg_last: "Last scheduler run", dg_prompt: "Last question sent", dg_test: "Test result: {s} sent, {f} failed (of {t})",
     c_noapp: "Not opened app",
     delRider: "Delete", delOneQ: "Delete rider {id} and all of his data? This cannot be undone.", delAll: "Delete all riders except…", delAllAsk: "Enter the IDs to KEEP (comma separated). Everyone else will be deleted with all their data.", delAllQ: "Delete {n} riders permanently? This cannot be undone.", delDone: "Deleted {n} riders.", delNone: "Nobody to delete.",
     schTitle: "All rider shifts (next 7 days)", schNone: "—", schRider: "Rider", onOrder: "On order",
@@ -519,6 +530,10 @@
     addHelp2: "Upload an Excel/CSV file (column 1 = ID, column 2 = name, column 3 = shift name or number, optional), or paste from Excel, or type one rider per line: ID, name, shift. Only riders added here can open the app.",
   });
   Object.assign(I18N.ar, {
+    f_online: "أونلاين الآن", f_sched: "في شيفته الآن", f_sched_off: "في شيفته ولم يفتح", f_declared: "معه طلب",
+    k_sched: "في شيفته الآن", s_sched: "مندوب داخل شيفته", k_online: "أونلاين الآن", s_online: "فتحوا التطبيق خلال آخر 3 دقائق", k_schedoff: "في شيفته ولم يفتح", s_schedoff: "لم يفتحوا التطبيق",
+    diagBtn: "🔔 فحص الإشعارات", diagTitle: "فحص الإشعارات", testBtn: "ابعت إشعار تجريبي للكل", diagClose: "إغلاق", diagOk: "كل شيء سليم.",
+    dg_time: "الوقت المحلي", dg_riders: "المناديب النشطون", dg_push: "مناديب فعّلوا الإشعارات", dg_elig: "مؤهلون للسؤال الآن", dg_last: "آخر تشغيل للمجدول", dg_prompt: "آخر سؤال اتبعت", dg_test: "نتيجة التجربة: وصل {s}، فشل {f} (من {t})",
     c_noapp: "لم يفتح التطبيق",
     delRider: "حذف", delOneQ: "حذف المندوب {id} وكل بياناته؟ لا يمكن التراجع.", delAll: "حذف الكل ما عدا…", delAllAsk: "اكتب أرقام المناديب التي تريد الإبقاء عليها (مفصولة بفاصلة). كل الباقين سيُحذفون مع بياناتهم.", delAllQ: "حذف {n} مندوب نهائياً؟ لا يمكن التراجع.", delDone: "تم حذف {n} مندوب.", delNone: "لا يوجد من يُحذف.",
     schTitle: "شيفتات كل المناديب (الأيام السبعة القادمة)", schNone: "—", schRider: "المندوب", onOrder: "معه طلب",
@@ -651,7 +666,7 @@
   }
 
   /* ===================== Live ===================== */
-  const FILTERS = ["all", "idle", "declared", "arrived", "picked_up", "late", "push"];
+  const FILTERS = ["all", "online", "sched", "sched_off", "declared", "idle", "late", "push"];
   // map markers: what the rider is doing right now
   const PIN = {
     idle: { color: "#8794a8", icon: "💤" },
@@ -662,6 +677,9 @@
 
   function matchFilter(r, f) {
     if (f === "all") return true;
+    if (f === "online") return r.online;
+    if (f === "sched") return r.scheduled;
+    if (f === "sched_off") return r.scheduled && !r.online;
     if (f === "late") return r.late;
     if (f === "push") return !r.push;
     return r.state === f;
@@ -689,6 +707,9 @@
     $("updated").textContent = T("updatedAt", { t: hhmm(o.now) });
     renderFilters();
     $("liveKpis").innerHTML =
+      kpi(T("k_sched"), s.scheduled, T("s_sched")) +
+      kpi(T("k_online"), s.online, T("s_online"), "good") +
+      kpi(T("k_schedoff"), s.sched_offline, T("s_schedoff"), s.sched_offline ? "warn" : "") +
       kpi(T("k_total"), s.total, T("s_total")) +
       kpi(T("k_order"), s.with_order, T("s_order", { p: s.total ? Math.round((s.with_order / s.total) * 100) : 0 })) +
       kpi(T("k_idle"), s.idle, T("s_idle"), s.idle && s.total && s.idle / s.total > 0.5 ? "warn" : "") +
@@ -1251,6 +1272,26 @@
     if (!found) o += `<option value="${esc(val)}">${esc(val)}</option>`;
     sel.innerHTML = o; sel.value = val || "";
   }
+  async function openDiag(testRes) {
+    try {
+      const d = await api("/api/admin/diagnose");
+      const row = (k, v) => `<div style="display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line)"><span class="muted">${esc(T(k))}</span><b dir="ltr">${esc(String(v))}</b></div>`;
+      const lt = d.last_tick;
+      $("diagBody").innerHTML =
+        (d.problems.length ? d.problems.map((x) => `<div class="card" style="padding:8px 12px;margin-bottom:8px;border-color:var(--red);background:var(--red-soft)">⚠️ ${esc(x)}</div>`).join("") : `<div class="card" style="padding:8px 12px;margin-bottom:8px;border-color:var(--green)">✅ ${esc(T("diagOk"))}</div>`) +
+        row("dg_time", d.local_time + " (" + d.timezone + ")") + row("dg_riders", d.riders) + row("dg_push", d.with_push) +
+        row("dg_elig", d.eligible_with_push + " / " + d.eligible_now) +
+        row("dg_last", lt ? hhmm(lt.at) + (lt.ok ? "" : " ✖") : "–") + row("dg_prompt", d.last_prompt_at ? hhmm(d.last_prompt_at) : "–") +
+        (testRes ? `<div style="margin-top:8px"><b>${esc(T("dg_test", { s: testRes.sent, f: testRes.failed, t: testRes.total }))}</b></div>` : "");
+      if (!$("diagDlg").open) $("diagDlg").showModal();
+    } catch (e) { handleErr(e); }
+  }
+  $("diagBtn").addEventListener("click", () => openDiag());
+  $("diagClose").addEventListener("click", () => $("diagDlg").close());
+  $("diagTest").addEventListener("click", async () => {
+    $("diagTest").disabled = true;
+    try { openDiag(await api("/api/admin/testpush", { method: "POST", body: "{}" })); } catch (e) { handleErr(e); } finally { $("diagTest").disabled = false; }
+  });
   async function loadShifts() {
     try { shiftsData = await api("/api/admin/shifts"); renderShifts(); } catch (e) { handleErr(e); }
     try { renderSchedules(await api("/api/admin/schedules")); } catch (e) { /* optional */ }
