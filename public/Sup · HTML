@@ -132,7 +132,7 @@
     if (!I[lang]) lang = "ar";
     const T = (k, v) => { let s = I[lang][k] ?? I.en[k] ?? k; if (v) for (const x in v) s = s.replace("{" + x + "}", v[x]); return s; };
     const clean = (s) => String(s || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
-    const hhmm = (ms) => (ms ? new Date(ms).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "");
+    const hhmm = (ms) => (ms ? new Date(ms).toLocaleTimeString("en-GB", { timeZone: "Asia/Riyadh", hour: "2-digit", minute: "2-digit" }) : "");
     let code = clean(new URLSearchParams(location.search).get("c")) || clean(ls.get("supCode"));
     let board = null, busy = false;
     const filt = {}; // shift id -> "all" | "pending"
@@ -230,7 +230,7 @@
       if (!board) return;
       const now = board.now;
       $("hello").textContent = T("hello", { n: board.sup.name });
-      $("when").textContent = new Date(now).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", { weekday: "long", day: "numeric", month: "long" });
+      $("when").textContent = new Date(now).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", { timeZone: "Asia/Riyadh", weekday: "long", day: "numeric", month: "long" });
       const shifts = [...board.shifts].sort((a, b) => (order[a.phase] - order[b.phase]) || a.startAt - b.startAt);
       $("list").innerHTML = shifts.length ? shifts.map((s) => {
         const [cls, text] = phase(s, now), c = s.counts, f = filt[s.id] || "all";
