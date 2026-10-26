@@ -242,6 +242,7 @@
     .slot { display: grid; grid-template-columns: 58px minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: end; margin-bottom: 10px; }
     .slot b { font-size: 14px; padding-bottom: 12px; }
     .slot label { margin: 0; font-size: 12px; color: var(--muted); }
+    .slot select.t24 { width: 100%; min-width: 0; padding: 12px 6px; font: inherit; font-size: 18px; font-weight: 700; border: 1.5px solid var(--line); border-radius: 14px; background: var(--bg); color: var(--text); direction: ltr; text-align: center; text-align-last: center; appearance: none; -webkit-appearance: none; }
     .slot input[type=time] { width: 100%; min-width: 0; padding: 10px 6px; font: inherit; font-size: 17px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--text); direction: ltr; text-align: center; }
     .scope { display: grid; gap: 8px; margin: 14px 0; }
     .scope label { display: flex; gap: 10px; align-items: center; margin: 0; font-weight: 600; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 12px; }
@@ -318,6 +319,52 @@
     input[type=text] { border-radius: 18px; font-size: 24px; padding: 17px 16px; }
     .hero img { width: 84px; height: 84px; border-radius: 24px; box-shadow: 0 12px 30px rgba(14,79,110,.35); }
     .hero h1 { font-size: 28px; font-weight: 800; }
+
+    /* ===== Link v3: clean professional layout ===== */
+    :root { --g1: #0d9488; --g2: #0369a1; --card: #ffffff; --ink: #0b1b33; }
+    @media (prefers-color-scheme: dark) { :root { --card: #121c2e; --ink: #eef2f7; } }
+    body { background: var(--bg); }
+    .appbar { background: var(--card); color: var(--ink); border-radius: 0; box-shadow: 0 1px 0 var(--line); padding: calc(env(safe-area-inset-top) + 10px) 16px 10px; backdrop-filter: none; }
+    @media (prefers-color-scheme: dark) { .appbar { background: var(--card); } }
+    .brand { color: var(--ink); font-size: 19px; font-weight: 800; }
+    .brand img { background: transparent; box-shadow: none; width: 34px; height: 34px; }
+    .langs { background: var(--bg); border: 1px solid var(--line); padding: 2px; }
+    .langs button { color: var(--muted); font-size: 12.5px; padding: 4px 9px; min-height: 28px; }
+    .langs button[aria-pressed="true"] { background: var(--g1); color: #fff; }
+    main { padding-bottom: calc(210px + env(safe-area-inset-bottom)); }
+    .hello { margin: 6px 2px 16px; justify-content: flex-start; gap: 12px; }
+    .hello::before { content: ""; }
+    .hello h1 { font-size: 22px; flex: 1; margin: 0; }
+    .hello .id { background: var(--g1); color: #fff; border: 0; font-size: 13px; padding: 5px 12px; }
+    /* tab bar at the bottom */
+    .tabs { position: fixed; inset-inline: 0; bottom: 0; top: auto; z-index: 7; margin: 0; border-radius: 22px 22px 0 0; border: 0; border-top: 1px solid var(--line); background: var(--card); backdrop-filter: none; box-shadow: 0 -8px 28px rgba(11,27,51,.10); padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); gap: 4px; max-width: none; }
+    .tabs button { min-height: 54px; border-radius: 16px; font-size: 11.5px; }
+    .tabs button[aria-selected=true] { background: color-mix(in srgb, var(--g1) 14%, transparent); color: var(--g1); box-shadow: none; }
+    @media (prefers-color-scheme: dark) { .tabs button[aria-selected=true] { background: color-mix(in srgb, var(--g1) 25%, transparent); color: #5eead4; } }
+    .tabs button::before { font-size: 21px; filter: grayscale(.4); }
+    .tabs button[aria-selected=true]::before { filter: none; }
+    .dock { bottom: calc(78px + env(safe-area-inset-bottom)); padding: 10px 16px 8px; background: transparent; }
+    .dock .row { gap: 10px; }
+    /* hero status card */
+    #ordersPane > .card { padding: 26px 20px 22px; border: 0; background: var(--card); }
+    #ordersPane > .card::before { display: none; }
+    .orb { width: 112px; height: 112px; margin: 0 auto 14px; border-radius: 50%; display: grid; place-items: center; font-size: 52px; background: radial-gradient(circle at 30% 25%, #f1f5f9, #e2e8f0); box-shadow: inset 0 -6px 16px rgba(15,27,45,.08), 0 10px 28px rgba(15,27,45,.12); }
+    .orb.o-declared { background: radial-gradient(circle at 30% 25%, #bbf7d0, #22c55e); box-shadow: 0 0 0 10px rgba(34,197,94,.14), 0 14px 32px rgba(21,128,61,.35); animation: breathe 2.4s ease-in-out infinite; }
+    .orb.o-arrived { background: radial-gradient(circle at 30% 25%, #ddd6fe, #8b5cf6); }
+    .orb.o-picked_up { background: radial-gradient(circle at 30% 25%, #bfdbfe, #3b82f6); }
+    @keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+    @media (prefers-reduced-motion: reduce) { .orb { animation: none !important; } }
+    #statusTitle { font-size: 26px; }
+    #ordersPane .badge { margin-bottom: 8px; }
+    .b-declared { background: #dcfce7; color: #15803d; box-shadow: none; }
+    @media (prefers-color-scheme: dark) { .b-declared { background: #0f2f1c; color: #4ade80; } }
+    .btn.amber { background: linear-gradient(135deg, #22c55e, #15803d); }
+    .btn.amber::after { border-color: rgba(34,197,94,.55); }
+    .btn.green { background: linear-gradient(135deg, #0d9488, #0369a1); }
+    button.btn { background: linear-gradient(135deg, var(--g1), var(--g2)); min-height: 64px; font-size: 19px; }
+    .shift { border-width: 1px; border-radius: 22px; }
+    .card, .metric, .inc { border-color: var(--line); }
+    .profile { background: linear-gradient(135deg, #0f172a, #0f766e); }
   </style>
 </head>
 <body>
@@ -362,6 +409,7 @@
       <div id="ask" class="ask hidden" role="status"><span class="dot"></span><span id="askText"></span></div>
 
       <div class="card">
+        <div class="orb o-idle" id="orb" aria-hidden="true">🛵</div>
         <span class="badge" id="badge"></span>
         <h2 id="statusTitle"></h2>
         <p class="muted" id="statusText" style="margin-top:4px"></p>
@@ -743,6 +791,8 @@
         ol.append(li);
       });
       $("stickyNote").classList.toggle("hidden", !o);
+      $("orb").className = "orb o-" + stage;
+      $("orb").textContent = { idle: "🛵", declared: stagesOn ? "📦" : "🛵", arrived: "🏪", picked_up: "🚀" }[stage] || "🛵";
       const simple = !stagesOn && !!o;
       ol.classList.toggle("hidden", !stagesOn);
       if (simple) {
@@ -1122,6 +1172,18 @@
         if (!schData) msg(errText("offline"));
       }
     }
+    // 24-hour time picker (a native <input type=time> shows AM/PM on many phones)
+    function t24(key, val) {
+      const v = val && val.length === 4 ? "0" + val : val || "";
+      let o = '<option value="">--:--</option>', found = !v;
+      for (let m = 0; m < 1440; m += 5) {
+        const t = String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+        if (t === v) found = true;
+        o += `<option value="${t}"${t === v ? " selected" : ""}>${t}</option>`;
+      }
+      if (!found) o += `<option value="${esc(v)}" selected>${esc(v)}</option>`;
+      return `<select class="t24" data-k="${key}">${o}</select>`;
+    }
     function renderSch() {
       const pane = $("schPane"), X = T().x;
       if (!schData) { pane.innerHTML = `<div class="empty">${esc(T().loading)}</div>`; return; }
@@ -1129,7 +1191,7 @@
       const chips = schData.days.map((x) => `<button type="button" data-day="${x.day}" aria-pressed="${x.day === schDay}">${esc(dayLabel(x.day, { weekday: "short" }))}<small>${esc(x.day === schData.today ? X.sc_today : dayLabel(x.day, { day: "numeric", month: "short" }))}</small></button>`).join("");
       const rows = [0, 1, 2].map((i) => {
         const sl = cur.slots[i] || { start: "", end: "" };
-        return `<div class="slot"><b>${esc(X.sc_slot.replace("{n}", i + 1))}</b><label>${esc(X.sc_from)}<input type="time" data-k="s${i}" value="${esc(sl.start.length === 4 ? "0" + sl.start : sl.start)}"></label><label>${esc(X.sc_to)}<input type="time" data-k="e${i}" value="${esc(sl.end.length === 4 ? "0" + sl.end : sl.end)}"></label></div>`;
+        return `<div class="slot"><b>${esc(X.sc_slot.replace("{n}", i + 1))}</b><label>${esc(X.sc_from)}${t24(`s${i}`, sl.start)}</label><label>${esc(X.sc_to)}${t24(`e${i}`, sl.end)}</label></div>`;
       }).join("");
       const week = schData.days.map((x) => `<div><span>${esc(dayLabel(x.day, { weekday: "long", day: "numeric", month: "short" }))}</span><span class="t">${x.slots.length ? esc(x.slots.map((q) => q.start + "-" + q.end).join("  |  ")) : esc(X.sc_off)}</span></div>`).join("");
       pane.innerHTML = `<div class="sect" style="margin-top:2px">${esc(X.sc_title)}</div><p class="muted" style="margin:-6px 2px 12px;font-size:14px">${esc(X.sc_sub)}</p>
