@@ -40,7 +40,8 @@ const DEFAULTS = {
   SHIFT_NAG_MIN: 5, // repeat the reminder every N minutes until the rider confirms
   SHIFT_OPEN_MIN: 30, // the rider may confirm from this many minutes before the start
   SHIFT_GRACE_MIN: 5, // confirming later than this after the start counts as late
-  SHIFT_MAX_NAGS: 30, // stop reminding after this many pushes
+  SHIFT_MAX_NAGS: 1, // one reminder, SHIFT_LEAD_MIN minutes before the shift starts
+  SUP_MAX_NAGS: 30, // supervisor confirm reminders limit
   SHIFT_SENDS_PER_TICK: 15, // shift reminders sent per minute (free plan limits)
 };
 
@@ -811,6 +812,15 @@ async function adminTestPush(env, now) {
   return { ok: true, total: rows.length, sent, failed, codes };
 }
 
+async function adminSetRiderSup(env, body) {
+  const rid = String((body && body.rider_id) || "").trim();
+  if (!rid) return fail("bad_request", "rider_id required", 400);
+  const sid = body && body.sup_id ? Number(body.sup_id) : 0;
+  if (sid) await env.DB.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind("rsup:" + rid, String(sid)).run();
+  else await env.DB.prepare("DELETE FROM settings WHERE key = ?").bind("rsup:" + rid).run();
+  return json({ ok: true });
+}
+
 /* ---------------------------- Admin ---------------------------- */
 async function sha256(s) {
   return new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)));
@@ -914,7 +924,7 @@ async function adminOverview(env, now) {
       late: !!(p && p.status === "missed"),
       push: pushSet.has(r.id),
       seen_at: seenMap.get(r.id) || null,
-      online: !!(seenMap.get(r.id) && now - seenMap.get(r.id) <= 3 * MIN) || !!o,
+      online: !!(seenMap.get(r.id) && now - seenMap.get(r.id) <= 3 * MIN),
       scheduled: shiftNow.has(r.id),
       delivered_today: deliveredMap.has(r.id) ? deliveredMap.get(r.id).n : 0,
       missed_today: missedMap.has(r.id) ? missedMap.get(r.id).n : 0,
@@ -1424,7 +1434,15 @@ function bandFor(bands, startMin) {
 }
 
 // Riders of one supervision window for one day: everyone whose own shift starts inside it
+const forSup = (riders, supId) => riders.filter((r) => !r.sup_override || r.sup_override === supId);
+
+async function riderSupMap(env) {
+  const rows = await safeAll(env.DB.prepare("SELECT key, value FROM settings WHERE key LIKE 'rsup:%'"));
+  return new Map(rows.map((x) => [x.key.slice(5), Number(x.value)]));
+}
+
 async function shiftRiders(env, band, occ, tzp) {
+  const ov = await riderSupMap(env);
   const d0 = dayStartMs(occ.day, tzp);
   const days = [occ.day, dayKey(d0 + DAY, tzp)];
   const res = await env.DB
@@ -1446,6 +1464,7 @@ async function shiftRiders(env, band, occ, tzp) {
     out.push({
       id: r.id,
       name: r.name,
+      sup_override: ov.get(r.id) || null,
       day: r.day,
       slot: r.start_min,
       start: hhmm(r.start_min),
@@ -1734,7 +1753,7 @@ async function supBoard(env, sup, now, c) {
   for (const s of (list && list.results) || []) {
     const occ = pickOcc(now, tzp, s, 2 * HOUR);
     if (!occ) continue;
-    const riders = await shiftRiders(env, s, occ, tzp);
+    const riders = forSup(await shiftRiders(env, s, occ, tzp), sup.id);
     const confirms = await shiftConfirms(env, s.id, occ.day);
     shifts.push({
       id: s.id, name: s.name, start: hhmm(s.start_min), end: hhmm(s.end_min),
@@ -1771,7 +1790,7 @@ async function supConfirm(env, sup, body, now, c) {
   if (!found) return fail("no_shift", "Shift not found", 404);
   const { s, occ, tzp } = found;
   if (now < occ.startAt - c.SHIFT_LEAD_MIN * MIN) return fail("too_early", "The shift has not started yet", 409);
-  const riders = await shiftRiders(env, s, occ, tzp);
+  const riders = forSup(await shiftRiders(env, s, occ, tzp), sup.id);
   const pending = riders.filter((r) => r.status === "pending");
   if (pending.length && !body.absent_pending) {
     return json({ ok: false, code: "pending", pending: pending.map((r) => ({ id: r.id, name: r.name })) }, 409);
@@ -2040,7 +2059,7 @@ async function supNotice(env, sup, now, c) {
   for (const b of (list && list.results) || []) {
     for (const o of occurrences(now, tzp, b)) {
       if (!(now >= o.startAt - c.SHIFT_LEAD_MIN * MIN && now < o.endAt)) continue;
-      const riders = await shiftRiders(env, b, o, tzp);
+      const riders = forSup(await shiftRiders(env, b, o, tzp), sup.id);
       const confirms = await shiftConfirms(env, b.id, o.day);
       const dec = supDecide({ occ: o, riders, confirms }, sup.id, now, c);
       if (dec && (!best || dec.kind === "conf")) best = { dec, band: b };
@@ -2080,15 +2099,15 @@ async function supTick(env, now, tzp, c, cap) {
   for (const { band, occ } of act) {
     const mine = targets.filter((t) => t.shift_id === band.id);
     if (!mine.length) continue;
-    const riders = await shiftRiders(env, band, occ, tzp);
+    const allRiders = await shiftRiders(env, band, occ, tzp);
     const confirms = await shiftConfirms(env, band.id, occ.day);
     for (const t of mine) {
       if (jobs.length >= cap) break;
-      const dec = supDecide({ occ, riders, confirms }, t.sup_id, now, c);
+      const dec = supDecide({ occ, riders: forSup(allRiders, t.sup_id), confirms }, t.sup_id, now, c);
       if (!dec) continue;
       const row = nagRows.get(occ.day + "|" + band.id + "|" + t.sup_id);
       const nags = row ? row.nags || 0 : 0, last = row ? row.last_nag || 0 : 0;
-      if (dec.kind === "head" ? nags > 0 : last > now - every || nags >= c.SHIFT_MAX_NAGS) continue;
+      if (dec.kind === "head" ? nags > 0 : last > now - every || nags >= c.SUP_MAX_NAGS) continue;
       jobs.push({ ...t, day: occ.day, band_id: band.id });
     }
   }
@@ -2229,6 +2248,13 @@ export default {
         shift,
         ...state,
       });
+    }
+
+    if (path === "/api/logout" && request.method === "POST") {
+      const body = await readBody(request);
+      const device = body && (await getDevice(env, body.token));
+      if (device) await safeRun(env.DB.prepare("DELETE FROM settings WHERE key = ?").bind("seen:" + device.rider_id));
+      return json({ ok: true });
     }
 
     if (path === "/api/shift/confirm" && request.method === "POST") {
@@ -2455,6 +2481,11 @@ export default {
           .bind(data)
           .run();
         return json({ ok: true });
+      }
+      if (path === "/api/admin/riders/supervisor" && request.method === "POST") {
+        const body = await readBody(request);
+        if (!body) return json({ ok: false }, 400);
+        return adminSetRiderSup(env, body);
       }
       if (path === "/api/admin/diagnose" && request.method === "GET") return json(await adminDiagnose(env, now));
       if (path === "/api/admin/testpush" && request.method === "POST") return json(await adminTestPush(env, now));
