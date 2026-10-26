@@ -22,7 +22,7 @@ const fail = (code, error, status) => json({ ok: false, code, error }, status);
 /* ---------------------------- Settings ---------------------------- */
 // All of these can be changed from wrangler.jsonc ("vars") without touching the code
 const DEFAULTS = {
-  TIMEZONE: "Africa/Cairo",
+  TIMEZONE: "Asia/Riyadh",
   WORK_START_HOUR: 9, // first hour questions are sent
   WORK_END_HOUR: 23, // last hour (exclusive)
   ASK_EVERY_MIN: 30, // "do you have an order?" every N minutes
@@ -563,6 +563,26 @@ const LATEST_PUSH_DEVICE = (alias) =>
   `(SELECT d2.id FROM devices d2 WHERE d2.rider_id = ${alias}.rider_id
      AND d2.push_subscription IS NOT NULL ORDER BY d2.id DESC LIMIT 1)`;
 
+// SQL fragment (alias r = riders): the rider is inside one of his own shifts right now, or he has
+// no schedule at all and the general working hours are open.
+async function riderGate(db, now, tz, globalOk) {
+  const fallback = globalOk ? "" : "AND 0";
+  try {
+    await db.prepare("SELECT 1 FROM rider_shifts LIMIT 1").first();
+  } catch {
+    return fallback;
+  }
+  const d0 = Math.round(tz.dayStart), dm = d0 - DAY;
+  const dayStr = (ms) => new Date(ms + tz.offset).toISOString().slice(0, 10);
+  const len = "(CASE WHEN rs.end_min = rs.start_min THEN 1440 ELSE ((rs.end_min - rs.start_min + 1440) % 1440) END)";
+  const inShift = (day, base) =>
+    `(rs.day = '${day}' AND ${now} >= ${base} + rs.start_min * 60000 AND ${now} < ${base} + (rs.start_min + ${len}) * 60000)`;
+  return `AND (
+    EXISTS (SELECT 1 FROM rider_shifts rs WHERE rs.rider_id = r.id AND (${inShift(dayStr(d0), d0)} OR ${inShift(dayStr(dm), dm)}))
+    ${globalOk ? `OR NOT EXISTS (SELECT 1 FROM rider_shifts rs WHERE rs.rider_id = r.id AND rs.day >= '${dayStr(dm)}')` : ""}
+  )`;
+}
+
 async function tick(env) {
   const now = Date.now();
   const c = cfg(env);
@@ -624,11 +644,10 @@ async function tick(env) {
     console.error("shiftTick failed", e && e.message ? e.message : e);
   }
 
-  // 2) outside working hours: no questions
-  if (!inWorkHours(tz.hour, c.WORK_START_HOUR, c.WORK_END_HOUR)) {
-    out.skipped = "outside_work_hours";
-    return out;
-  }
+  // 2) questions only reach a rider during HIS OWN shift. A rider who has not set any shift
+  //    falls back to the general working hours.
+  const globalOk = inWorkHours(tz.hour, c.WORK_START_HOUR, c.WORK_END_HOUR);
+  const gate = await riderGate(db, now, tz, globalOk);
 
   // 3) who needs a question now?
   const cap = c.MAX_SENDS_PER_TICK - shiftSent;
@@ -643,6 +662,7 @@ async function tick(env) {
          AND d2.push_subscription IS NOT NULL ORDER BY d2.id DESC LIMIT 1)
        WHERE r.active = 1
          ${simple ? "" : "AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.rider_id = r.id AND o.status = 'active')"}
+         ${gate}
          AND NOT EXISTS (SELECT 1 FROM prompts p WHERE p.rider_id = r.id AND p.status = 'pending')
          AND COALESCE((SELECT MAX(p.sent_at) FROM prompts p
                WHERE p.rider_id = r.id AND p.type = 'have_order'), 0) <= ?
@@ -658,7 +678,7 @@ async function tick(env) {
        FROM orders o
        JOIN riders r ON r.id = o.rider_id AND r.active = 1
        JOIN devices d ON d.id = ${LATEST_PUSH_DEVICE("o")}
-       WHERE o.status = 'active' AND o.stage IN (${stages})
+       WHERE o.status = 'active' AND o.stage IN (${stages}) ${gate}
          AND NOT EXISTS (SELECT 1 FROM prompts p WHERE p.rider_id = o.rider_id AND p.status = 'pending')
          AND (SELECT COUNT(*) FROM prompts p WHERE p.order_id = o.id AND p.type = '${promptType}') < ?
          AND COALESCE((SELECT MAX(p.sent_at) + ? FROM prompts p
@@ -679,7 +699,10 @@ async function tick(env) {
     for (const r of rows.results || []) jobs.push({ ...r, type: "delivered" });
   }
 
-  if (!jobs.length) return out;
+  if (!jobs.length) {
+    if (!globalOk) out.skipped = "outside_work_hours";
+    return out;
+  }
 
   // 4) record the question first (the service worker will look it up), then push
   const inserted = await db.batch(
