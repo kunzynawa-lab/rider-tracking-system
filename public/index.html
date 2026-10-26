@@ -271,6 +271,53 @@
       max-width: 448px; margin: 0 auto; background: #0f1b2d; color: #fff; padding: 12px 16px; border-radius: 12px;
       font-size: 14.5px; box-shadow: var(--shadow); text-align: center;
     }
+
+    /* ===== Link visual refresh ===== */
+    :root { --r: 22px; --g1: #0f766e; --g2: #0e4f6e; }
+    body { background: radial-gradient(900px 420px at 100% -10%, color-mix(in srgb, var(--brand) 16%, transparent), transparent 70%), radial-gradient(700px 380px at -10% 10%, color-mix(in srgb, var(--blue) 10%, transparent), transparent 70%), var(--bg); background-attachment: fixed; letter-spacing: .1px; }
+    .appbar { background: linear-gradient(135deg, var(--g1), var(--g2)); border-radius: 0 0 26px 26px; padding-bottom: 16px; box-shadow: 0 10px 30px rgba(14,79,110,.28); }
+    @media (prefers-color-scheme: dark) { .appbar { background: linear-gradient(135deg, #0f3a3a, #0e2a45); } }
+    .brand { font-size: 20px; letter-spacing: .3px; }
+    .brand img { width: 36px; height: 36px; border-radius: 11px; box-shadow: 0 3px 10px rgba(0,0,0,.25); }
+    .card { border-radius: var(--r); border: 1px solid color-mix(in srgb, var(--line) 70%, transparent); box-shadow: 0 2px 4px rgba(15,27,45,.04), 0 14px 34px rgba(15,27,45,.09); animation: rise .35s ease both; }
+    @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) { .card, .shift, .inc, .metric { animation: none !important; } }
+    .hello h1 { font-size: 26px; font-weight: 800; }
+    .hello .id { background: linear-gradient(135deg, var(--brand-soft), var(--surface)); border-color: var(--brand); color: var(--brand-d); }
+    #ordersPane > .card { position: relative; overflow: hidden; padding: 24px 20px; text-align: center; }
+    #ordersPane > .card::before { content: ""; position: absolute; inset-inline: 0; top: 0; height: 6px; background: linear-gradient(90deg, var(--g1), #38bdf8, var(--g2)); }
+    #statusTitle { font-size: 28px; font-weight: 800; margin-top: 2px; }
+    #statusText { font-size: 15.5px; }
+    #ordersPane .badge { font-size: 14px; padding: 5px 16px; letter-spacing: .3px; }
+    .b-declared { box-shadow: 0 0 0 4px color-mix(in srgb, var(--amber) 18%, transparent); }
+    .tabs { border-radius: 18px; padding: 5px; gap: 5px; box-shadow: 0 8px 24px rgba(15,27,45,.08); position: sticky; top: 8px; z-index: 4; backdrop-filter: blur(10px); background: color-mix(in srgb, var(--surface) 88%, transparent); }
+    .tabs button { border-radius: 14px; font-size: 12px; padding: 7px 2px 6px; transition: background .2s, color .2s, transform .15s; }
+    .tabs button::before { display: block; font-size: 19px; line-height: 1.2; margin-bottom: 1px; }
+    #tabOrders::before { content: "\1F4E6"; } #tabPerf::before { content: "\1F4CA"; } #tabSch::before { content: "\1F5D3\FE0F"; } #tabInc::before { content: "\1F381"; }
+    .tabs button[aria-selected=true] { background: linear-gradient(135deg, var(--g1), var(--g2)); box-shadow: 0 6px 16px rgba(14,79,110,.35); }
+    button.btn { min-height: 62px; border-radius: 20px; font-size: 18px; letter-spacing: .2px; box-shadow: 0 8px 20px rgba(15,27,45,.18); transition: transform .12s, box-shadow .12s; background: linear-gradient(135deg, var(--g1), var(--g2)); }
+    button.btn:active { transform: scale(.97); box-shadow: 0 3px 8px rgba(15,27,45,.2); }
+    .btn.amber { background: linear-gradient(135deg, #f59e0b, #d97706); position: relative; }
+    .btn.amber::after { content: ""; position: absolute; inset: -4px; border-radius: 24px; border: 2px solid rgba(245,158,11,.55); animation: ring 1.8s ease-out infinite; pointer-events: none; }
+    @keyframes ring { from { opacity: .9; transform: scale(.98); } to { opacity: 0; transform: scale(1.06); } }
+    @media (prefers-reduced-motion: reduce) { .btn.amber::after { animation: none; } }
+    .btn.green { background: linear-gradient(135deg, #22c55e, #15803d); }
+    .btn.violet { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+    .btn.blue { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+    .btn.quiet, .btn.danger { box-shadow: none; background: var(--surface); }
+    .dock { background: linear-gradient(to top, var(--bg) 62%, transparent); }
+    .ask { border-radius: 20px; box-shadow: 0 8px 24px rgba(217,119,6,.18); font-size: 17px; }
+    .shift { border-radius: var(--r); animation: rise .35s ease both; }
+    .shift .sh-n { font-size: 23px; }
+    .metric { border-radius: 18px; animation: rise .4s ease both; }
+    .metric .v { font-size: 25px; }
+    .profile { background: linear-gradient(135deg, #0f172a, #134e4a 60%, #0e4f6e); border-radius: 24px; box-shadow: 0 14px 34px rgba(14,79,110,.3); }
+    .inc { border-radius: var(--r); animation: rise .4s ease both; }
+    .days button { border-radius: 16px; min-width: 56px; }
+    .days button[aria-pressed=true] { background: linear-gradient(135deg, var(--g1), var(--g2)); box-shadow: 0 6px 14px rgba(14,79,110,.3); }
+    input[type=text] { border-radius: 18px; font-size: 24px; padding: 17px 16px; }
+    .hero img { width: 84px; height: 84px; border-radius: 24px; box-shadow: 0 12px 30px rgba(14,79,110,.35); }
+    .hero h1 { font-size: 28px; font-weight: 800; }
   </style>
 </head>
 <body>
@@ -555,7 +602,7 @@
     }
     const errText = (code, fallback) => (T().e[code] || fallback || T().e.generic);
 
-    const fmtTime = (ms) => (ms ? new Date(ms).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "");
+    const fmtTime = (ms) => (ms ? new Date(ms).toLocaleTimeString("en-GB", { timeZone: "Asia/Riyadh", hour: "2-digit", minute: "2-digit" }) : "");
 
     async function post(path, data) {
       const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
