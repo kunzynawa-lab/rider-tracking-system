@@ -203,7 +203,7 @@
         <button data-page="riders">👥 <span data-i="navRiders"></span></button>
         <button data-page="performance">🏆 <span data-i="navPerf"></span></button>
         <button data-page="shifts">🗓️ <span data-i="navShifts"></span></button>
-        <button data-page="incentives">🎁 <span data-i="navInc"></span></button>
+        <button data-page="messages">📢 <span data-i="navMsg"></span></button>
       </nav>
       <div class="side-foot">
         <div class="seg" id="langSeg"><button data-lang="en" aria-pressed="true">EN</button><button data-lang="ar" aria-pressed="false">عربي</button></div>
@@ -360,17 +360,17 @@
         <div class="card"><div class="scroll" style="max-height:360px"><table><thead><tr id="hiHead"></tr></thead><tbody id="hiBody"></tbody></table></div></div>
       </section>
 
-      <section id="pg-incentives" class="hidden">
-        <div class="head">
-          <div><h1 data-i="incTitle"></h1><div class="sub" data-i="incHelp"></div></div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><div class="chips" id="incLangs"></div><span class="badge b-idle hidden" id="incCustom" data-i="customized"></span></div>
-        </div>
-        <div id="incList"></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn ghost" id="incAddCard" data-i="incAddCard"></button>
-          <button class="btn" id="incSave" data-i="incSave"></button>
-          <button class="btn ghost" id="incCopyEn" data-i="incCopyEn"></button>
-          <button class="btn ghost" id="incReset" data-i="incReset"></button>
+      <section id="pg-messages" class="hidden">
+        <div class="head"><div><h1 data-i="msgTitle"></h1><div class="sub" data-i="msgSub"></div></div></div>
+        <div class="card" style="padding:18px;max-width:640px">
+          <textarea id="annText" rows="5" maxlength="600" data-ph="msgPh" style="resize:vertical"></textarea>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;margin:14px 0;align-items:center">
+            <label style="display:flex;gap:6px;align-items:center;width:auto"><input type="radio" name="annTo" value="all" checked style="width:auto"><span data-i="msgAll"></span></label>
+            <label style="display:flex;gap:6px;align-items:center;width:auto"><input type="radio" name="annTo" value="one" style="width:auto"><span data-i="msgOne"></span></label>
+            <input id="annRider" style="width:150px" data-ph="msgRiderPh" inputmode="numeric">
+          </div>
+          <div class="err" id="annErr" role="alert"></div>
+          <button class="btn" id="annSend" data-i="msgSend"></button>
         </div>
       </section>
     </main>
@@ -508,6 +508,8 @@
   };
 
   Object.assign(I18N.en, {
+    navMsg: "Messages", msgTitle: "Send a message to riders", msgSub: "The same message reaches everyone, or only the rider you choose. It shows as a notification and inside the app.", msgPh: "Write your message…", msgAll: "All riders", msgOne: "One rider (ID)", msgRiderPh: "Rider ID", msgSend: "Send", msgSent: "Sent to {n} rider(s).", msgNeedText: "Write a message first.", msgNeedId: "Enter the rider ID.", msgConfirmAll: "Send this message to ALL riders?",
+    k_started: "Started shift", s_started: "pressed “start shift”", k_notstarted: "Not started", s_notstarted: "shift time came, did not press start", f_started: "Started shift", f_not_started: "Not started",
     rsupLabel: "Responsible supervisor", rsupAll: "All supervisors", rsupSaved: "Supervisor updated.",
     offline: "Offline", c_online: "Online", c_openedapp: "Last opened app",
     f_online: "Online now", f_sched: "On shift now", f_sched_off: "On shift, not online", f_declared: "On order",
@@ -541,6 +543,8 @@
     addHelp2: "Upload an Excel/CSV file (column 1 = ID, column 2 = name, column 3 = shift name or number, optional), or paste from Excel, or type one rider per line: ID, name, shift. Only riders added here can open the app.",
   });
   Object.assign(I18N.ar, {
+    navMsg: "الرسائل", msgTitle: "إرسال رسالة للمناديب", msgSub: "نفس الرسالة توصل للكل، أو لمندوب واحد تختاره. بتظهر كإشعار وجوه التطبيق.", msgPh: "اكتب رسالتك…", msgAll: "كل المناديب", msgOne: "مندوب واحد (بالرقم)", msgRiderPh: "رقم المندوب", msgSend: "إرسال", msgSent: "اتبعتت لـ {n} مندوب.", msgNeedText: "اكتب الرسالة الأول.", msgNeedId: "اكتب رقم المندوب.", msgConfirmAll: "تبعت الرسالة دي لكل المناديب؟",
+    k_started: "بدأوا الشيفت", s_started: "ضغطوا «بدأت شيفتي»", k_notstarted: "لم يبدأوا", s_notstarted: "جه وقت شيفتهم ولم يضغطوا", f_started: "بدأ الشيفت", f_not_started: "لم يبدأ",
     rsupLabel: "المشرف المسؤول", rsupAll: "كل المشرفين", rsupSaved: "تم تغيير المشرف.",
     offline: "غير متصل", c_online: "الاتصال", c_openedapp: "آخر فتح للتطبيق",
     f_online: "أونلاين الآن", f_sched: "في شيفته الآن", f_sched_off: "في شيفته ولم يفتح", f_declared: "معه طلب",
@@ -637,14 +641,14 @@
 
   function go(p) {
     page = p;
-    ["live", "reports", "riders", "performance", "shifts", "incentives"].forEach((x) => $("pg-" + x).classList.toggle("hidden", x !== p));
+    ["live", "reports", "riders", "performance", "shifts", "messages"].forEach((x) => $("pg-" + x).classList.toggle("hidden", x !== p));
     document.querySelectorAll("#nav button").forEach((b) => (b.dataset.page === p ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current")));
     if (p === "live") { loadLive(); setTimeout(() => map && map.invalidateSize(), 50); }
     if (p === "reports") loadReport();
     if (p === "riders") loadRiders();
     if (p === "performance") initPerf();
     if (p === "shifts") loadShifts();
-    if (p === "incentives") loadInc();
+    if (p === "messages") $("annText").focus();
   }
   document.querySelectorAll("#nav button").forEach((b) => b.addEventListener("click", () => go(b.dataset.page)));
 
@@ -679,7 +683,7 @@
   }
 
   /* ===================== Live ===================== */
-  const FILTERS = ["all", "online", "sched", "sched_off", "declared", "idle", "late", "push"];
+  const FILTERS = ["all", "sched", "started", "not_started", "online", "declared", "idle", "late", "push"];
   // map markers: what the rider is doing right now
   const PIN = {
     idle: { color: "#8794a8", icon: "💤" },
@@ -693,6 +697,8 @@
     if (f === "online") return r.online;
     if (f === "sched") return r.scheduled;
     if (f === "sched_off") return r.scheduled && !r.online;
+    if (f === "started") return r.shift_started;
+    if (f === "not_started") return r.shift_not_started;
     if (f === "late") return r.late;
     if (f === "push") return !r.push;
     return r.state === f;
@@ -734,8 +740,9 @@
     renderFilters();
     $("liveKpis").innerHTML =
       kpi(T("k_sched"), s.scheduled, T("s_sched"), "", "sched") +
-      kpi(T("k_online"), s.online, T("s_online"), "good", "online") +
-      kpi(T("k_schedoff"), s.sched_offline, T("s_schedoff"), s.sched_offline ? "warn" : "", "sched_off") +
+      kpi(T("k_started"), s.shift_started, T("s_started"), "good", "started") +
+      kpi(T("k_notstarted"), s.shift_not_started, T("s_notstarted"), s.shift_not_started ? "warn" : "", "not_started") +
+      kpi(T("k_online"), s.online, T("s_online"), "", "online") +
       kpi(T("k_total"), s.total, T("s_total")) +
       kpi(T("k_order"), s.with_order, T("s_order", { p: s.total ? Math.round((s.with_order / s.total) * 100) : 0 })) +
       kpi(T("k_idle"), s.idle, T("s_idle"), s.idle && s.total && s.idle / s.total > 0.5 ? "warn" : "") +
@@ -1313,6 +1320,20 @@
       if (!$("diagDlg").open) $("diagDlg").showModal();
     } catch (e) { handleErr(e); }
   }
+  $("annSend").addEventListener("click", async () => {
+    const one = document.querySelector("input[name=annTo]:checked").value === "one";
+    const text = $("annText").value.trim(), rid = $("annRider").value.trim();
+    $("annErr").textContent = "";
+    if (!text) { $("annErr").textContent = T("msgNeedText"); return; }
+    if (one && !rid) { $("annErr").textContent = T("msgNeedId"); return; }
+    if (!one && !confirm(T("msgConfirmAll"))) return;
+    $("annSend").disabled = true;
+    try {
+      const r = await api("/api/admin/announce", { method: "POST", body: JSON.stringify({ text, rider_id: one ? rid : null }) });
+      toast(T("msgSent", { n: r.targets })); $("annText").value = "";
+    } catch (e) { $("annErr").textContent = (e && e.message) || ""; } finally { $("annSend").disabled = false; }
+  });
+  $("annRider").addEventListener("input", () => { document.querySelector("input[name=annTo][value=one]").checked = true; });
   $("grpClose").addEventListener("click", () => $("grpDlg").close());
   $("diagBtn").addEventListener("click", () => openDiag());
   $("diagClose").addEventListener("click", () => $("diagDlg").close());
@@ -1523,20 +1544,6 @@
       renderInc();
     }));
   }
-  $("incAddCard").addEventListener("click", () => { collectInc(); (incDraft[incLang] = incDraft[incLang] || []).push({ icon: "🎁", color: "#f59e0b", title: "", intro: "", lines: [], formulas: [], table: null, note: "" }); renderInc(); });
-  $("incCopyEn").addEventListener("click", () => {
-    if (!confirm(T("incCopyQ"))) return;
-    incDraft[incLang] = JSON.parse(JSON.stringify(incData.cards.en || [])); renderInc();
-  });
-  $("incSave").addEventListener("click", async () => {
-    collectInc();
-    try { await api("/api/admin/incentives", { method: "POST", body: JSON.stringify({ lang: incLang, cards: incDraft[incLang] || [] }) }); toast(T("incSaved")); await loadInc(); } catch (e) { handleErr(e); }
-  });
-  $("incReset").addEventListener("click", async () => {
-    if (!confirm(T("incResetQ"))) return;
-    try { await api("/api/admin/incentives", { method: "POST", body: JSON.stringify({ lang: incLang, reset: true }) }); toast(T("incResetDone")); await loadInc(); } catch (e) { handleErr(e); }
-  });
-
   let timer = null;
   function startPolling() {
     stopPolling();
@@ -1551,7 +1558,6 @@
     if (report) renderReport();
     if (manage) renderRidersMgmt();
     if (shiftsData) renderShifts();
-    if (incData) { collectInc(); renderInc(); }
     renderPerfTabs();
     if (perfList && perfTab === "data") { renderPerfData(); loadPerfData(true); }
     if (tipsData && perfTab === "tips") renderTips();
