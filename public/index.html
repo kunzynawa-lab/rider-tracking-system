@@ -978,7 +978,7 @@
       }
     }
 
-    let pushOn = false;
+    let pushOn = false, syncedKey = false;
     async function refresh() {
       const token = getToken();
       if (!token) return;
@@ -997,6 +997,7 @@
           if (!busy) { applyLang(); render(body); }
           giveTokenToWorker();
           syncNotification();
+          if (!syncedKey) { syncedKey = true; syncPushKey(); }
         } else if (status === 401) {
           store.del("riderToken");
           showLogin();
@@ -1068,6 +1069,28 @@
       }
     }
 
+    // Keep the phone's push subscription in step with the server key (fixes "VapidPkHashMismatch" after a key change)
+    async function syncPushKey() {
+      try {
+        if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return;
+        if (Notification.permission !== "granted" || !getToken()) return;
+        const keyRes = await fetch("/api/vapid-key").then((r) => r.json());
+        if (!keyRes || !keyRes.key) return;
+        const reg = await navigator.serviceWorker.ready;
+        let sub = await reg.pushManager.getSubscription();
+        const want = urlBase64ToUint8Array(keyRes.key);
+        if (sub) {
+          const have = sub.options && sub.options.applicationServerKey ? new Uint8Array(sub.options.applicationServerKey) : null;
+          const same = have && have.length === want.length && have.every((v, i) => v === want[i]);
+          if (same && pushOn) return;
+          if (!same) { try { await sub.unsubscribe(); } catch {} sub = null; }
+        }
+        if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: want });
+        const { body } = await post("/api/subscribe", { token: getToken(), subscription: sub.toJSON() });
+        if (body && body.ok) { setPushUI(true); giveTokenToWorker(); }
+      } catch {}
+    }
+
     $("enableBtn").addEventListener("click", async () => {
       if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
         return msg(errText("unsupported"));
@@ -1100,6 +1123,7 @@
         if (body.ok) msg(T().testSent);
         else {
           if (body.code === "push_expired" || body.code === "push_off") setPushUI(false);
+          if (body.code === "push_expired") { await syncPushKey(); if (pushOn) return msg(T().enabled); }
           msg(errText(body.code) + (body.detail ? " [" + body.detail + "]" : ""));
         }
       } catch {
