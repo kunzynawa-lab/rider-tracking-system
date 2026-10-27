@@ -320,6 +320,13 @@
     .hero img { width: 84px; height: 84px; border-radius: 24px; box-shadow: 0 12px 30px rgba(14,79,110,.35); }
     .hero h1 { font-size: 28px; font-weight: 800; }
 
+    .annbox { background: linear-gradient(135deg, #1d4ed8, #6d28d9); color: #fff; border-radius: 22px; padding: 18px; margin-bottom: 14px; box-shadow: 0 14px 30px rgba(67,56,202,.35); }
+    .annbox .ah { font-weight: 800; font-size: 14px; opacity: .9; margin-bottom: 6px; }
+    .annbox .at { font-size: 18px; font-weight: 700; line-height: 1.6; white-space: pre-wrap; margin-bottom: 14px; }
+    .annbox .btn { background: #fff !important; color: #312e81 !important; min-height: 50px; font-size: 16px; box-shadow: none; }
+    .pushbanner { background: var(--amber-soft); border: 2px solid var(--amber); border-radius: 20px; padding: 14px 16px; margin-bottom: 14px; }
+    .pushbanner .pt { font-weight: 700; margin-bottom: 10px; }
+    .pushbanner .btn { min-height: 52px; font-size: 16px; }
     /* only Orders + Shifts */
     #tabPerf, #tabInc { display: none !important; }
     .tabs { grid-template-columns: repeat(2, 1fr) !important; }
@@ -407,6 +414,8 @@
         <button type="button" role="tab" id="tabInc" data-tab="inc" aria-selected="false"></button>
       </div>
 
+      <div id="annBox" class="annbox hidden"><div class="ah">📢 <span id="annHead"></span></div><div class="at" id="annText"></div><button type="button" class="btn" id="annOk"></button></div>
+      <div id="pushBanner" class="pushbanner hidden"><div class="pt" id="pushBannerText"></div><button type="button" class="btn amber" id="pushBannerBtn"></button></div>
       <div id="ordersPane">
       <div id="shiftCard"></div>
       <div id="ask" class="ask hidden" role="status"><span class="dot"></span><span id="askText"></span></div>
@@ -750,10 +759,30 @@
       ur: { badge: "آرڈر پر", title: "آپ کے پاس آرڈر ہے", text: "آپ کا آرڈر درج ہو گیا۔ ہم بعد میں دوبارہ پوچھیں گے۔", done: "آرڈر مکمل" },
       bn: { badge: "অর্ডারে", title: "আপনার অর্ডার আছে", text: "আপনার অর্ডার নথিভুক্ত হয়েছে। পরে আবার জিজ্ঞাসা করব।", done: "অর্ডার শেষ" },
     };
+    const ANNS = {
+      ar: { head: "رسالة من الإدارة", ok: "تم، فهمت", push: "فعّل الإشعارات عشان توصلك تنبيهات الشيفت والرسائل.", btn: "🔔 فعّل الإشعارات" },
+      en: { head: "Message from management", ok: "OK, got it", push: "Turn on notifications to receive shift reminders and messages.", btn: "🔔 Enable notifications" },
+      ur: { head: "انتظامیہ کا پیغام", ok: "ٹھیک ہے", push: "شفٹ کی یاد دہانی اور پیغامات کے لیے نوٹیفکیشن آن کریں۔", btn: "🔔 نوٹیفکیشن آن کریں" },
+      bn: { head: "ম্যানেজমেন্টের বার্তা", ok: "বুঝেছি", push: "শিফটের রিমাইন্ডার ও বার্তা পেতে নোটিফিকেশন চালু করুন।", btn: "🔔 নোটিফিকেশন চালু করুন" },
+    };
+    let annData = null;
+    function renderAnn() {
+      const A = ANNS[lang] || ANNS.en;
+      $("annBox").classList.toggle("hidden", !annData);
+      if (annData) { $("annHead").textContent = A.head; $("annText").textContent = annData.text; $("annOk").textContent = A.ok; }
+      const showPush = !pushOn && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window && !(isIOS && !isStandalone);
+      const iosHint = !pushOn && isIOS && !isStandalone;
+      $("pushBanner").classList.toggle("hidden", !(showPush || iosHint));
+      $("pushBannerText").textContent = iosHint ? T().pushIos : A.push; $("pushBannerBtn").textContent = A.btn;
+      $("pushBannerBtn").classList.toggle("hidden", iosHint);
+    }
+    $("annOk").addEventListener("click", async () => { annData = null; renderAnn(); try { await post("/api/ann/ack", { token: getToken() }); } catch {} });
+    $("pushBannerBtn").addEventListener("click", () => $("enableBtn").click());
     let stagesOn = false;
     function render(s) {
       last = s || { order: null, prompt: null };
       if (s && typeof s.stages === "boolean") stagesOn = s.stages;
+      try { renderAnn(); } catch {}
       const t = T();
       const o = last.order, p = last.prompt;
       const stage = o ? o.stage : "idle";
@@ -905,6 +934,8 @@
           pushOn = !!body.pushEnabled;
           setPushUI(pushOn);
           shiftInfo = body.shift || null;
+          annData = body.announcement || null;
+          renderAnn();
           shiftLoaded = true;
           if (!busy) { applyLang(); render(body); }
           giveTokenToWorker();
@@ -973,6 +1004,7 @@
       $("testBtn").classList.toggle("hidden", !enabled);
       $("enableBtn").disabled = false;
       $("pushState").textContent = enabled ? T().pushOn : T().pushOff;
+      try { renderAnn(); } catch {}
       if (!enabled && isIOS && !isStandalone) {
         $("enableBtn").disabled = true;
         $("pushState").textContent = T().pushIos;
