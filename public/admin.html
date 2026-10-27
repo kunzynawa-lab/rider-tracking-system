@@ -1316,7 +1316,7 @@
         row("dg_time", d.local_time + " (" + d.timezone + ")") + row("dg_riders", d.riders) + row("dg_push", d.with_push) +
         row("dg_elig", d.eligible_with_push + " / " + d.eligible_now) +
         row("dg_last", lt ? hhmm(lt.at) + (lt.ok ? "" : " ✖") : "–") + row("dg_prompt", d.last_prompt_at ? hhmm(d.last_prompt_at) : "–") +
-        (testRes ? `<div style="margin-top:8px"><b>${esc(T("dg_test", { s: testRes.sent, f: testRes.failed, t: testRes.total }))}</b></div>` : "");
+        (testRes ? `<div style="margin-top:8px"><b>${esc(T("dg_test", { s: testRes.sent, f: testRes.failed, t: testRes.total }))}</b>${testRes.detail ? `<div class="muted" dir="ltr" style="font-size:12.5px">${esc(testRes.detail)}</div>` : ""}</div>` : "");
       if (!$("diagDlg").open) $("diagDlg").showModal();
     } catch (e) { handleErr(e); }
   }
