@@ -365,9 +365,10 @@ async function vapidSelfCheck(env) {
   try {
     if (!vk(env.VAPID_PUBLIC_KEY)) return "VAPID_PUBLIC_KEY is missing";
     if (!vk(env.VAPID_PRIVATE_KEY)) return "VAPID_PRIVATE_KEY secret is missing";
-    const pub = b64u.toBytes(vk(env.VAPID_PUBLIC_KEY));
+    let pub, priv;
+    try { pub = b64u.toBytes(vk(env.VAPID_PUBLIC_KEY)); } catch { return "VAPID_PUBLIC_KEY is not valid (it must be URL-safe base64 text only, no spaces or symbols)"; }
+    try { priv = b64u.toBytes(vk(env.VAPID_PRIVATE_KEY)); } catch { return "VAPID_PRIVATE_KEY secret is not valid (it must be URL-safe base64 text only, 43 characters; re-enter it in Cloudflare)"; }
     if (pub.length !== 65) return "VAPID_PUBLIC_KEY is not a valid key (length " + pub.length + ", expected 65 bytes)";
-    const priv = b64u.toBytes(vk(env.VAPID_PRIVATE_KEY));
     if (priv.length !== 32) return "VAPID_PRIVATE_KEY is not a valid key (length " + priv.length + ", expected 32 bytes)";
     const sk = await signingKey(env);
     const data = new TextEncoder().encode("check");
