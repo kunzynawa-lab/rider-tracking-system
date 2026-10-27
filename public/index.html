@@ -375,11 +375,66 @@
     .shift { border-width: 1px; border-radius: 22px; }
     .card, .metric, .inc { border-color: var(--line); }
     .profile { background: linear-gradient(135deg, #0f172a, #0f766e); }
+
+    /* ===== Link v4: final rider UI ===== */
+    :root { --bg: #eef2f7; --card: #ffffff; --ink: #0b1b33; --g1: #0d9488; --g2: #0369a1; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #0a1120; --card: #121c2f; --ink: #eef2f7; --line: #23314a; --surface: #121c2f; } }
+    body { background: var(--bg); }
+    .dock { display: none !important; }
+    main { padding: 10px 16px calc(112px + env(safe-area-inset-bottom)); }
+    .appbar { position: sticky; top: 0; background: color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: none; border-bottom: 1px solid var(--line); padding: calc(env(safe-area-inset-top) + 8px) 16px 8px; }
+    .brand { gap: 9px; font-size: 21px; font-weight: 800; letter-spacing: .2px; }
+    .brand .mark { width: 34px; height: 34px; border-radius: 11px; box-shadow: 0 4px 12px rgba(3,105,161,.35); }
+    .langs { background: var(--card); }
+    .hello { margin: 10px 2px 14px; }
+    .hello h1 { font-size: 24px; font-weight: 800; letter-spacing: .1px; }
+    .hello .id { background: var(--card); color: var(--muted); border: 1px solid var(--line); font-weight: 700; }
+    /* hero card */
+    #ordersPane > .card { background: var(--card); border: 1px solid var(--line); border-radius: 28px; padding: 26px 20px 24px; box-shadow: 0 18px 44px rgba(3,105,161,.10); text-align: center; position: relative; overflow: hidden; }
+    #ordersPane > .card::before { display: block; content: ""; position: absolute; inset-inline: -20%; top: -90px; height: 180px; background: radial-gradient(closest-side, color-mix(in srgb, var(--g1) 22%, transparent), transparent); }
+    #ordersPane > .card > * { position: relative; }
+    .orb.o-idle { display: none; }
+    .orb { width: 96px; height: 96px; font-size: 44px; margin-bottom: 12px; }
+    #statusTitle { font-size: 25px; line-height: 1.35; }
+    #statusText { font-size: 15px; max-width: 290px; margin-inline: auto; }
+    #ordersPane .badge { font-size: 13px; letter-spacing: .3px; }
+    #actions { display: grid; gap: 12px; margin-top: 22px; justify-items: center; }
+    #actions .btn { width: 100%; min-height: 58px; border-radius: 18px; font-size: 17px; }
+    #actions .btn.amber { width: 172px; height: 172px; min-height: 0; border-radius: 50%; font-size: 22px; line-height: 1.3; padding: 20px; margin: 4px auto 6px; background: radial-gradient(circle at 32% 26%, #4ade80, #16a34a 55%, #166534); box-shadow: 0 0 0 10px color-mix(in srgb, #22c55e 16%, transparent), 0 22px 40px rgba(22,163,74,.42); }
+    #actions .btn.amber::after { inset: -10px; border-radius: 50%; border: 2px solid rgba(34,197,94,.5); }
+    #actions .btn.quiet { background: transparent; border: 1.5px solid var(--line); color: var(--ink); }
+    #actions .btn.danger { min-height: 48px; font-size: 15px; background: transparent; border: 0; color: var(--red); text-decoration: underline; text-underline-offset: 3px; }
+    /* shift strip */
+    .shift { background: var(--card); border: 1px solid var(--line); border-radius: 22px; box-shadow: 0 8px 24px rgba(11,27,51,.06); padding: 16px 18px; }
+    .shift .sh-k { text-transform: none; letter-spacing: 0; font-size: 13px; }
+    .shift .sh-n { font-size: 26px; font-weight: 800; margin: 2px 0 4px; }
+    .shift.act { background: color-mix(in srgb, var(--amber) 12%, var(--card)); border-color: var(--amber); }
+    .shift.ok { background: color-mix(in srgb, var(--green) 10%, var(--card)); border-color: var(--green); }
+    .shift.late { background: color-mix(in srgb, var(--red) 10%, var(--card)); border-color: var(--red); }
+    .shift .btn { min-height: 54px; font-size: 16px; border-radius: 16px; }
+    /* banners */
+    .annbox, .pushbanner { border-radius: 22px; }
+    .pushbanner { background: color-mix(in srgb, var(--amber) 14%, var(--card)); display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; margin: 14px 0 0; }
+    .pushbanner .pt { margin: 0; font-size: 14.5px; }
+    .pushbanner .btn { min-height: 48px; font-size: 15.5px; background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: none; }
+    .pushbanner .btn::after { display: none; }
+    #shiftCard { margin-top: 14px; }
+    /* tab bar */
+    .tabs { background: color-mix(in srgb, var(--card) 92%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-radius: 0; border: 0; border-top: 1px solid var(--line); box-shadow: none; padding: 8px 16px calc(8px + env(safe-area-inset-bottom)); gap: 8px; }
+    .tabs button { min-height: 52px; border-radius: 16px; font-size: 12px; color: var(--muted); }
+    .tabs button::before { font-size: 22px; filter: none; opacity: .75; }
+    .tabs button[aria-selected=true] { background: color-mix(in srgb, var(--g1) 16%, transparent); color: var(--g1); }
+    .tabs button[aria-selected=true]::before { opacity: 1; }
+    @media (prefers-color-scheme: dark) { .tabs button[aria-selected=true] { color: #5eead4; } }
+    /* settings + toast */
+    details.card { border-radius: 22px; background: var(--card); border: 1px solid var(--line); box-shadow: none; }
+    #message { top: auto; bottom: calc(86px + env(safe-area-inset-bottom)); max-width: 420px; background: #0f172a; border: 1px solid #334155; font-size: 14px; line-height: 1.5; border-radius: 16px; text-align: start; }
+    @media (prefers-color-scheme: dark) { #message { background: #1e293b; } }
   </style>
 </head>
 <body>
   <header class="appbar">
-    <div class="brand"><img src="/icon-192.png" alt=""><span id="appName"></span></div>
+    <div class="brand"><svg class="mark" viewBox="0 0 40 40" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#14b8a6"/><stop offset="1" stop-color="#0369a1"/></linearGradient></defs><rect width="40" height="40" rx="11" fill="url(#lg)"/><path d="M20 9.5c-4.7 0-8.3 3.6-8.3 8.1 0 5.7 6.5 11.6 7.4 12.4.5.4 1.1.4 1.6 0 .9-.8 7.4-6.7 7.4-12.4 0-4.5-3.6-8.1-8.1-8.1zm0 11.2a3.1 3.1 0 1 1 0-6.2 3.1 3.1 0 0 1 0 6.2z" fill="#fff"/></svg><span id="appName"></span></div>
     <div class="langs" role="group" aria-label="Language">
       <button type="button" data-lang="ar" aria-pressed="false">عربي</button>
       <button type="button" data-lang="ur" aria-pressed="false">اردو</button>
@@ -415,9 +470,7 @@
       </div>
 
       <div id="annBox" class="annbox hidden"><div class="ah">📢 <span id="annHead"></span></div><div class="at" id="annText"></div><button type="button" class="btn" id="annOk"></button></div>
-      <div id="pushBanner" class="pushbanner hidden"><div class="pt" id="pushBannerText"></div><button type="button" class="btn amber" id="pushBannerBtn"></button></div>
       <div id="ordersPane">
-      <div id="shiftCard"></div>
       <div id="ask" class="ask hidden" role="status"><span class="dot"></span><span id="askText"></span></div>
 
       <div class="card">
@@ -427,7 +480,11 @@
         <p class="muted" id="statusText" style="margin-top:4px"></p>
         <ol class="stepper" id="stepper"></ol>
         <p class="note hidden" id="stickyNote"><span>📌</span><span id="stickyText"></span></p>
+        <div class="row" id="actions"></div>
       </div>
+      <div id="shiftCard"></div>
+      <div id="pushBanner" class="pushbanner hidden"><div class="pt" id="pushBannerText"></div><button type="button" class="btn" id="pushBannerBtn"></button></div>
+
       </div>
 
       <div id="perfPane" class="hidden"></div>
@@ -456,7 +513,7 @@
     </section>
   </main>
 
-  <div class="dock hidden" id="dock"><div class="in"><div class="row" id="actions"></div></div></div>
+  <div class="dock hidden" id="dock"></div>
   <p id="message" role="status" aria-live="polite" class="hidden"></p>
 
   <script>
