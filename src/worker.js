@@ -289,12 +289,15 @@ const b64u = {
   },
 };
 
+// secrets pasted into the dashboard often carry quotes / spaces / line breaks
+const vk = (v) => String(v || "").trim().replace(/^["']+|["']+$/g, "").replace(/\s+/g, "");
 let cachedKey = { d: null, key: null };
+let lastPushError = "";
 const jwtCache = new Map(); // origin -> { value, exp }
 
 async function signingKey(env) {
-  if (cachedKey.key && cachedKey.d === env.VAPID_PRIVATE_KEY) return cachedKey.key;
-  const pub = b64u.toBytes(env.VAPID_PUBLIC_KEY);
+  if (cachedKey.key && cachedKey.d === vk(env.VAPID_PRIVATE_KEY)) return cachedKey.key;
+  const pub = b64u.toBytes(vk(env.VAPID_PUBLIC_KEY));
   const key = await crypto.subtle.importKey(
     "jwk",
     {
@@ -302,14 +305,14 @@ async function signingKey(env) {
       crv: "P-256",
       x: b64u.fromBytes(pub.slice(1, 33)),
       y: b64u.fromBytes(pub.slice(33, 65)),
-      d: env.VAPID_PRIVATE_KEY,
+      d: vk(env.VAPID_PRIVATE_KEY),
       ext: true,
     },
     { name: "ECDSA", namedCurve: "P-256" },
     false,
     ["sign"]
   );
-  cachedKey = { d: env.VAPID_PRIVATE_KEY, key };
+  cachedKey = { d: vk(env.VAPID_PRIVATE_KEY), key };
   return key;
 }
 
@@ -322,13 +325,13 @@ async function vapidAuthHeader(endpoint, env) {
   const enc = new TextEncoder();
   const exp = nowSec + 12 * 3600;
   const header = b64u.fromBytes(enc.encode(JSON.stringify({ typ: "JWT", alg: "ES256" })));
-  const payload = b64u.fromBytes(enc.encode(JSON.stringify({ aud, exp, sub: env.VAPID_SUBJECT })));
+  const payload = b64u.fromBytes(enc.encode(JSON.stringify({ aud, exp, sub: String(env.VAPID_SUBJECT || "").trim() })));
   const sig = await crypto.subtle.sign(
     { name: "ECDSA", hash: "SHA-256" },
     await signingKey(env),
     enc.encode(header + "." + payload)
   );
-  const value = `vapid t=${header}.${payload}.${b64u.fromBytes(sig)}, k=${env.VAPID_PUBLIC_KEY}`;
+  const value = `vapid t=${header}.${payload}.${b64u.fromBytes(sig)}, k=${vk(env.VAPID_PUBLIC_KEY)}`;
   jwtCache.set(aud, { value, exp });
   return value;
 }
@@ -345,9 +348,38 @@ async function sendPush(subscription, env, ttlSec) {
       },
       signal: AbortSignal.timeout(8000),
     });
+    if (res.status >= 400) {
+      let t = "";
+      try { t = (await res.text()).slice(0, 160); } catch {}
+      lastPushError = "push service answered " + res.status + (t ? ": " + t : "");
+    }
     return res.status;
-  } catch {
+  } catch (e) {
+    lastPushError = String((e && e.message) || e);
     return 0;
+  }
+}
+
+// does the private key really belong to the public key? (a mismatch makes every push fail)
+async function vapidSelfCheck(env) {
+  try {
+    if (!vk(env.VAPID_PUBLIC_KEY)) return "VAPID_PUBLIC_KEY is missing";
+    if (!vk(env.VAPID_PRIVATE_KEY)) return "VAPID_PRIVATE_KEY secret is missing";
+    const pub = b64u.toBytes(vk(env.VAPID_PUBLIC_KEY));
+    if (pub.length !== 65) return "VAPID_PUBLIC_KEY is not a valid key (length " + pub.length + ", expected 65 bytes)";
+    const priv = b64u.toBytes(vk(env.VAPID_PRIVATE_KEY));
+    if (priv.length !== 32) return "VAPID_PRIVATE_KEY is not a valid key (length " + priv.length + ", expected 32 bytes)";
+    const sk = await signingKey(env);
+    const data = new TextEncoder().encode("check");
+    const sig = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, sk, data);
+    const vkey = await crypto.subtle.importKey("raw", pub, { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
+    const ok = await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, vkey, sig, data);
+    if (!ok) return "VAPID_PRIVATE_KEY does not match VAPID_PUBLIC_KEY (they must be a pair)";
+    const subj = String(env.VAPID_SUBJECT || "").trim();
+    if (!/^(mailto:|https:\/\/)/.test(subj)) return "VAPID_SUBJECT must start with mailto: or https://";
+    return null;
+  } catch (e) {
+    return "VAPID keys cannot be used: " + String((e && e.message) || e);
   }
 }
 
@@ -788,9 +820,10 @@ async function adminDiagnose(env, now) {
   let settingsErr = null;
   try { await setSetting(env, "diag_probe", now); } catch (e) { settingsErr = String((e && e.message) || e); }
   const hasKeys = { vapid_public: !!env.VAPID_PUBLIC_KEY, vapid_private: !!env.VAPID_PRIVATE_KEY };
+  const vapidErr = await vapidSelfCheck(env);
   const problems = [];
+  if (vapidErr) problems.push(vapidErr);
   if (settingsErr) problems.push("Cannot write to the settings table (online status and scheduler log need it): " + settingsErr);
-  if (!hasKeys.vapid_private) problems.push("VAPID_PRIVATE_KEY secret is missing");
   if (!last) problems.push("The scheduler has not run yet (check Triggers -> Cron in Cloudflare)");
   else if (now - last.at > 5 * MIN) problems.push("The scheduler last ran more than 5 minutes ago");
   else if (last.ok === false) problems.push("Last run failed: " + last.error);
@@ -817,7 +850,7 @@ async function adminTestPush(env, now) {
     codes[st] = (codes[st] || 0) + 1;
     if (st >= 200 && st < 300) sent++; else { failed++; if (st === 404 || st === 410) await safeRun(env.DB.prepare("UPDATE devices SET push_subscription = NULL WHERE id = ?").bind(r.id)); }
   }));
-  return { ok: true, total: rows.length, sent, failed, codes };
+  return { ok: true, total: rows.length, sent, failed, codes, detail: failed ? (await vapidSelfCheck(env)) || lastPushError || "" : "" };
 }
 
 /* ---------------------------- Announcements (admin -> riders) ---------------------------- */
@@ -2478,7 +2511,7 @@ export default {
 
     /* ---- Notifications ---- */
     if (path === "/api/vapid-key" && request.method === "GET") {
-      return json({ ok: true, key: env.VAPID_PUBLIC_KEY });
+      return json({ ok: true, key: vk(env.VAPID_PUBLIC_KEY) });
     }
 
     if (path === "/api/subscribe" && request.method === "POST") {
@@ -2552,7 +2585,10 @@ export default {
         await env.DB.prepare("UPDATE devices SET push_subscription = NULL WHERE id = ?").bind(device.id).run();
         return fail("push_expired", "Subscription expired", 410);
       }
-      if (status < 200 || status >= 300) return fail("push_failed", "Send failed (" + status + ")", 502);
+      if (status < 200 || status >= 300) {
+        const bad = await vapidSelfCheck(env);
+        return json({ ok: false, code: "push_failed", error: "Send failed", detail: bad || lastPushError || "status " + status }, 502);
+      }
       return json({ ok: true });
     }
 
