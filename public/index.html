@@ -1043,7 +1043,7 @@
         if (body.ok) msg(T().testSent);
         else {
           if (body.code === "push_expired" || body.code === "push_off") setPushUI(false);
-          msg(errText(body.code));
+          msg(errText(body.code) + (body.detail ? " [" + body.detail + "]" : ""));
         }
       } catch {
         msg(errText("network"));
