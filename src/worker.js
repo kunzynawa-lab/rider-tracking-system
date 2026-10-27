@@ -649,6 +649,14 @@ async function tick(env) {
     console.error("shiftTick failed", e && e.message ? e.message : e);
   }
 
+  try {
+    const a = await annPushTick(env, Math.max(0, Math.min(20, c.MAX_SENDS_PER_TICK - shiftSent)));
+    out.ann = a;
+    shiftSent += a.sent + a.failed;
+  } catch (e) {
+    console.error("annPushTick failed", e && e.message ? e.message : e);
+  }
+
   // 2) questions only reach a rider during HIS OWN shift. A rider who has not set any shift
   //    falls back to the general working hours.
   const globalOk = inWorkHours(tz.hour, c.WORK_START_HOUR, c.WORK_END_HOUR);
@@ -812,6 +820,71 @@ async function adminTestPush(env, now) {
   return { ok: true, total: rows.length, sent, failed, codes };
 }
 
+/* ---------------------------- Announcements (admin -> riders) ---------------------------- */
+const ANN_TXT = { ar: "رسالة من الإدارة", en: "Message from management", ur: "انتظامیہ کا پیغام", bn: "ম্যানেজমেন্টের বার্তা" };
+
+async function adminAnnounce(env, body, now) {
+  const text = String((body && body.text) || "").trim().slice(0, 600);
+  if (!text) return fail("empty", "Write a message first", 400);
+  const rid = body && body.rider_id ? String(body.rider_id).trim() : "";
+  let ids;
+  if (rid) {
+    const r = await env.DB.prepare("SELECT id FROM riders WHERE id = ? AND active = 1").bind(rid).first();
+    if (!r) return fail("no_rider", "Rider not found", 404);
+    ids = [r.id];
+  } else {
+    ids = (await safeAll(env.DB.prepare("SELECT id FROM riders WHERE active = 1"))).map((x) => x.id);
+  }
+  const msg = JSON.stringify({ id: now, text, at: now, shown: false });
+  for (let i = 0; i < ids.length; i += 25) {
+    await env.DB.batch(
+      ids.slice(i, i + 25).flatMap((id) => [
+        env.DB.prepare("DELETE FROM settings WHERE key = ?").bind("annmsg:" + id),
+        env.DB.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").bind("annmsg:" + id, msg),
+      ])
+    );
+  }
+  // queue for push delivery (the scheduler sends a few per minute)
+  let q = [];
+  try { q = JSON.parse(((await env.DB.prepare("SELECT value FROM settings WHERE key = 'annpush'").first()) || {}).value || "[]"); } catch {}
+  await setSetting(env, "annpush", JSON.stringify([...new Set([...q, ...ids])]));
+  return json({ ok: true, targets: ids.length });
+}
+
+async function annPushTick(env, cap) {
+  const out = { sent: 0, failed: 0 };
+  if (cap <= 0) return out;
+  let q = [];
+  try { q = JSON.parse(((await env.DB.prepare("SELECT value FROM settings WHERE key = 'annpush'").first()) || {}).value || "[]"); } catch { return out; }
+  if (!q.length) return out;
+  const batch = q.slice(0, cap), rest = q.slice(cap);
+  const marks = batch.map(() => "?").join(",");
+  const rows = await safeAll(env.DB.prepare(
+    `SELECT d.id AS id, d.rider_id AS rider_id, d.push_subscription AS sub FROM devices d
+     WHERE d.push_subscription IS NOT NULL AND d.rider_id IN (${marks})
+       AND d.id = (SELECT MAX(d2.id) FROM devices d2 WHERE d2.rider_id = d.rider_id AND d2.push_subscription IS NOT NULL)`
+  ).bind(...batch));
+  const stmts = [];
+  await Promise.all(rows.map(async (r) => {
+    let sub; try { sub = JSON.parse(r.sub); } catch { return; }
+    const st = await sendPush(sub, env, 3600);
+    if (st >= 200 && st < 300) out.sent++;
+    else { out.failed++; if (st === 404 || st === 410) stmts.push(env.DB.prepare("UPDATE devices SET push_subscription = NULL WHERE id = ?").bind(r.id)); }
+  }));
+  if (stmts.length) await env.DB.batch(stmts);
+  await setSetting(env, "annpush", JSON.stringify(rest));
+  return out;
+}
+
+async function getAnn(env, riderId, now) {
+  const row = await env.DB.prepare("SELECT value FROM settings WHERE key = ?").bind("annmsg:" + riderId).first().catch(() => null);
+  if (!row || !row.value) return null;
+  try {
+    const m = JSON.parse(row.value);
+    return now - m.at > 48 * HOUR ? null : m;
+  } catch { return null; }
+}
+
 async function adminSetRiderSup(env, body) {
   const rid = String((body && body.rider_id) || "").trim();
   if (!rid) return fail("bad_request", "rider_id required", 400);
@@ -915,6 +988,26 @@ async function adminOverview(env, now) {
   const c2 = cfg(env);
   const gateSql = await riderGate(db, now, tz, false);
   const shiftNow = new Set((await safeAll(db.prepare(`SELECT r.id AS id FROM riders r WHERE r.active = 1 ${gateSql}`))).map((x) => x.id));
+  // who is inside his shift now, and did HE press "I started my shift"
+  const startedMap = new Map();
+  try {
+    const d0 = Math.round(tz.dayStart), dm = d0 - DAY;
+    const dayStr = (ms) => new Date(ms + tz.offset).toISOString().slice(0, 10);
+    const len = "(CASE WHEN rs.end_min = rs.start_min THEN 1440 ELSE ((rs.end_min - rs.start_min + 1440) % 1440) END)";
+    const inS = (day, base) => `(rs.day = '${day}' AND ${now} >= ${base} + rs.start_min * 60000 AND ${now} < ${base} + (rs.start_min + ${len}) * 60000)`;
+    const rows = await safeAll(db.prepare(
+      `SELECT rs.rider_id AS rider_id, rs.day AS day, rs.start_min AS start_min, a.rider_at AS rider_at, a.sup_status AS sup_status
+       FROM rider_shifts rs JOIN riders r ON r.id = rs.rider_id AND r.active = 1
+       LEFT JOIN attendance a ON a.day = rs.day AND a.rider_id = rs.rider_id AND a.start_min = rs.start_min
+       WHERE ${inS(dayStr(d0), d0)} OR ${inS(dayStr(dm), dm)}`
+    ));
+    for (const x of rows) {
+      const startAt = dayStartMs(x.day, tz) + x.start_min * MIN;
+      const prev = startedMap.get(x.rider_id);
+      const started = !!x.rider_at || x.sup_status === "present";
+      if (!prev || started) startedMap.set(x.rider_id, { started, late: x.rider_at ? Math.max(0, Math.floor((x.rider_at - startAt) / MIN)) : Math.max(0, Math.floor((now - startAt) / MIN)), startAt });
+    }
+  } catch { /* shifts not set up */ }
   const orderMap = byKey(orders);
   const locMap = byKey(locs);
   const pushSet = new Set(((pushes && pushes.results) || []).map((r) => r.rider_id));
@@ -940,6 +1033,9 @@ async function adminOverview(env, now) {
       seen_at: seenMap.get(r.id) || null,
       online: !!(seenMap.get(r.id) && now - seenMap.get(r.id) <= 3 * MIN),
       scheduled: shiftNow.has(r.id),
+      shift_started: !!(startedMap.get(r.id) && startedMap.get(r.id).started),
+      shift_not_started: !!(startedMap.get(r.id) && !startedMap.get(r.id).started && now >= startedMap.get(r.id).startAt),
+      shift_late_min: startedMap.get(r.id) ? startedMap.get(r.id).late : 0,
       delivered_today: deliveredMap.has(r.id) ? deliveredMap.get(r.id).n : 0,
       missed_today: missedMap.has(r.id) ? missedMap.get(r.id).n : 0,
     };
@@ -957,6 +1053,8 @@ async function adminOverview(env, now) {
     online: list.filter((r) => r.online).length,
     scheduled: list.filter((r) => r.scheduled).length,
     sched_offline: list.filter((r) => r.scheduled && !r.online).length,
+    shift_started: list.filter((r) => r.shift_started).length,
+    shift_not_started: list.filter((r) => r.shift_not_started).length,
     longest_idle_ms: idleDurations.length ? Math.max(...idleDurations) : 0,
     avg_idle_ms: idleDurations.length ? Math.round(idleDurations.reduce((a, b) => a + b, 0) / idleDurations.length) : 0,
   };
@@ -2250,8 +2348,10 @@ export default {
       try { await setSetting(env, "seen:" + device.rider_id, now); } catch (e) { console.error("heartbeat failed", e && e.message ? e.message : e); }
       const state = await riderState(env, device.rider_id, now);
       const shift = await riderShift(env, device.rider_id, now, cfg(env));
+      const ann = await getAnn(env, device.rider_id, now);
       return json({
         ok: true,
+        announcement: ann ? { id: ann.id, text: ann.text, at: ann.at } : null,
         rider,
         lang: cleanLang(device.lang) || "ar",
         pushEnabled: !!device.push_enabled,
@@ -2259,6 +2359,14 @@ export default {
         shift,
         ...state,
       });
+    }
+
+    if (path === "/api/ann/ack" && request.method === "POST") {
+      const body = await readBody(request);
+      const device = body && (await getDevice(env, body.token));
+      if (!device) return fail("unauthorized", "Unauthorized", 401);
+      await safeRun(env.DB.prepare("DELETE FROM settings WHERE key = ?").bind("annmsg:" + device.rider_id));
+      return json({ ok: true });
     }
 
     if (path === "/api/logout" && request.method === "POST") {
@@ -2405,6 +2513,17 @@ export default {
       let device = body.token ? await getDevice(env, body.token) : null;
       if (!device && body.endpoint) device = await getDeviceByEndpoint(env, body.endpoint);
       if (!device) return json({ ok: true, notice: buildNotice({ order: null, prompt: null }, "ar") });
+      if (body.push) {
+        const ann = await getAnn(env, device.rider_id, now);
+        if (ann && !ann.shown) {
+          await safeRun(env.DB.prepare("UPDATE settings SET value = ? WHERE key = ?").bind(JSON.stringify({ ...ann, shown: true }), "annmsg:" + device.rider_id));
+          const lg = cleanLang(device.lang) || "ar";
+          return json({
+            ok: true,
+            notice: { kind: "msg", sticky: false, dir: lg === "en" || lg === "bn" ? "ltr" : "rtl", lang: lg, title: "📢 " + (ANN_TXT[lg] || ANN_TXT.ar), body: ann.text, actions: [] },
+          });
+        }
+      }
       const state = await riderState(env, device.rider_id, now);
       if (!state.order) state.shift = await riderShift(env, device.rider_id, now, cfg(env));
       return json({ ok: true, notice: buildNotice(state, cleanLang(device.lang) || "ar", !!cfg(env).ASK_STAGES) });
@@ -2492,6 +2611,11 @@ export default {
           .bind(data)
           .run();
         return json({ ok: true });
+      }
+      if (path === "/api/admin/announce" && request.method === "POST") {
+        const body = await readBody(request);
+        if (!body) return json({ ok: false }, 400);
+        return adminAnnounce(env, body, now);
       }
       if (path === "/api/admin/riders/supervisor" && request.method === "POST") {
         const body = await readBody(request);
