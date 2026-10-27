@@ -55,7 +55,7 @@ const FALLBACK = {
   lang: "ar",
 };
 
-async function fetchNotice() {
+async function fetchNotice(fromPush) {
   try {
     const supcode = await kvGet("supcode");
     if (supcode) {
@@ -70,6 +70,7 @@ async function fetchNotice() {
     }
     const token = await kvGet("token");
     const body = token ? { token } : {};
+    if (fromPush) body.push = true;
     if (!token) {
       const sub = await self.registration.pushManager.getSubscription();
       if (sub) body.endpoint = sub.endpoint;
@@ -88,7 +89,7 @@ async function fetchNotice() {
 }
 
 async function show(n) {
-  const urgent = n.kind === "prompt" || n.kind === "shift";
+  const urgent = n.kind === "prompt" || n.kind === "shift" || n.kind === "msg";
   const opts = {
     body: n.body,
     icon: ICON,
@@ -113,7 +114,7 @@ async function show(n) {
 self.addEventListener("push", (event) => {
   event.waitUntil(
     (async () => {
-      const n = (await fetchNotice()) || FALLBACK;
+      const n = (await fetchNotice(true)) || FALLBACK;
       // Always show something, otherwise iOS stops the subscription
       await show(n);
     })()
