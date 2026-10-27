@@ -352,6 +352,8 @@ async function sendPush(subscription, env, ttlSec) {
       let t = "";
       try { t = (await res.text()).slice(0, 160); } catch {}
       lastPushError = "push service answered " + res.status + (t ? ": " + t : "");
+      // the phone subscribed with an older public key: that subscription can never work again
+      if (res.status === 400 && /VapidPkHashMismatch/.test(t)) return 410;
     }
     return res.status;
   } catch (e) {
