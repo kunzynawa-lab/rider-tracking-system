@@ -293,11 +293,51 @@ const b64u = {
 const vk = (v) => String(v || "").trim().replace(/^["']+|["']+$/g, "").replace(/\s+/g, "");
 let cachedKey = { d: null, key: null };
 let lastPushError = "";
+
+// P-256: the public key is computed from the private one, so the two can never be a mismatched pair
+const P256 = {
+  p: 0xffffffff00000001000000000000000000000000ffffffffffffffffffffffffn,
+  a: -3n,
+  gx: 0x6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296n,
+  gy: 0x4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5n,
+};
+const mod = (a, m = P256.p) => ((a % m) + m) % m;
+function inv(a, m = P256.p) {
+  let [r0, r1] = [mod(a, m), m], [s0, s1] = [1n, 0n];
+  while (r1) { const q = r0 / r1; [r0, r1] = [r1, r0 - q * r1]; [s0, s1] = [s1, s0 - q * s1]; }
+  return mod(s0, m);
+}
+function ptAdd(P, Q) {
+  if (!P) return Q;
+  if (!Q) return P;
+  if (P[0] === Q[0] && mod(P[1] + Q[1]) === 0n) return null;
+  const l = P[0] === Q[0] ? mod((3n * P[0] * P[0] + P256.a) * inv(2n * P[1])) : mod((Q[1] - P[1]) * inv(Q[0] - P[0]));
+  const x = mod(l * l - P[0] - Q[0]);
+  return [x, mod(l * (P[0] - x) - P[1])];
+}
+function derivePublic(dBytes) {
+  let k = 0n;
+  for (const b of dBytes) k = (k << 8n) | BigInt(b);
+  let R = null, Q = [P256.gx, P256.gy];
+  while (k > 0n) { if (k & 1n) R = ptAdd(R, Q); Q = ptAdd(Q, Q); k >>= 1n; }
+  const out = new Uint8Array(65);
+  out[0] = 4;
+  for (let i = 0; i < 32; i++) { out[1 + i] = Number((R[0] >> BigInt(8 * (31 - i))) & 0xffn); out[33 + i] = Number((R[1] >> BigInt(8 * (31 - i))) & 0xffn); }
+  return out;
+}
+let pubCache = { d: null, pub: null };
+function vapidPublic(env) {
+  const d = vk(env.VAPID_PRIVATE_KEY);
+  if (pubCache.d === d && pubCache.pub) return pubCache.pub;
+  const pub = b64u.fromBytes(derivePublic(b64u.toBytes(d)));
+  pubCache = { d, pub };
+  return pub;
+}
 const jwtCache = new Map(); // origin -> { value, exp }
 
 async function signingKey(env) {
   if (cachedKey.key && cachedKey.d === vk(env.VAPID_PRIVATE_KEY)) return cachedKey.key;
-  const pub = b64u.toBytes(vk(env.VAPID_PUBLIC_KEY));
+  const pub = b64u.toBytes(vapidPublic(env));
   const key = await crypto.subtle.importKey(
     "jwk",
     {
@@ -331,7 +371,7 @@ async function vapidAuthHeader(endpoint, env) {
     await signingKey(env),
     enc.encode(header + "." + payload)
   );
-  const value = `vapid t=${header}.${payload}.${b64u.fromBytes(sig)}, k=${vk(env.VAPID_PUBLIC_KEY)}`;
+  const value = `vapid t=${header}.${payload}.${b64u.fromBytes(sig)}, k=${vapidPublic(env)}`;
   jwtCache.set(aud, { value, exp });
   return value;
 }
@@ -365,19 +405,11 @@ async function sendPush(subscription, env, ttlSec) {
 // does the private key really belong to the public key? (a mismatch makes every push fail)
 async function vapidSelfCheck(env) {
   try {
-    if (!vk(env.VAPID_PUBLIC_KEY)) return "VAPID_PUBLIC_KEY is missing";
     if (!vk(env.VAPID_PRIVATE_KEY)) return "VAPID_PRIVATE_KEY secret is missing";
-    let pub, priv;
-    try { pub = b64u.toBytes(vk(env.VAPID_PUBLIC_KEY)); } catch { return "VAPID_PUBLIC_KEY is not valid (it must be URL-safe base64 text only, no spaces or symbols)"; }
-    try { priv = b64u.toBytes(vk(env.VAPID_PRIVATE_KEY)); } catch { return "VAPID_PRIVATE_KEY secret is not valid (it must be URL-safe base64 text only, 43 characters; re-enter it in Cloudflare)"; }
-    if (pub.length !== 65) return "VAPID_PUBLIC_KEY is not a valid key (length " + pub.length + ", expected 65 bytes)";
-    if (priv.length !== 32) return "VAPID_PRIVATE_KEY is not a valid key (length " + priv.length + ", expected 32 bytes)";
-    const sk = await signingKey(env);
-    const data = new TextEncoder().encode("check");
-    const sig = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, sk, data);
-    const vkey = await crypto.subtle.importKey("raw", pub, { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
-    const ok = await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, vkey, sig, data);
-    if (!ok) return "VAPID_PRIVATE_KEY does not match VAPID_PUBLIC_KEY (they must be a pair)";
+    let priv;
+    try { priv = b64u.toBytes(vk(env.VAPID_PRIVATE_KEY)); } catch { return "VAPID_PRIVATE_KEY secret is not valid (URL-safe base64, 43 characters, no spaces or quotes; re-enter it in Cloudflare)"; }
+    if (priv.length !== 32) return "VAPID_PRIVATE_KEY is not valid (length " + priv.length + " bytes, expected 32 = 43 characters)";
+    await signingKey(env);
     const subj = String(env.VAPID_SUBJECT || "").trim();
     if (!/^(mailto:|https:\/\/)/.test(subj)) return "VAPID_SUBJECT must start with mailto: or https://";
     return null;
@@ -837,6 +869,7 @@ async function adminDiagnose(env, now) {
     work_hours: c.WORK_START_HOUR + "-" + c.WORK_END_HOUR, general_hours_open: globalOk,
     riders: riders.n, with_push: withPush.n, eligible_now: eligible.n, eligible_with_push: eligiblePush.n,
     last_prompt_at: lastPrompt.at || null, last_tick: last, keys: hasKeys, problems,
+    key_hint: { public_start: (() => { try { return vapidPublic(env).slice(0, 6); } catch { return "?"; } })(), public_end: (() => { try { return vapidPublic(env).slice(-4); } catch { return "?"; } })(), private_end: vk(env.VAPID_PRIVATE_KEY).slice(-4), private_len: vk(env.VAPID_PRIVATE_KEY).length },
   };
 }
 
@@ -2514,7 +2547,7 @@ export default {
 
     /* ---- Notifications ---- */
     if (path === "/api/vapid-key" && request.method === "GET") {
-      return json({ ok: true, key: vk(env.VAPID_PUBLIC_KEY) });
+      return json({ ok: true, key: vapidPublic(env) });
     }
 
     if (path === "/api/subscribe" && request.method === "POST") {
@@ -2660,6 +2693,16 @@ export default {
         const body = await readBody(request);
         if (!body) return json({ ok: false }, 400);
         return adminSetRiderSup(env, body);
+      }
+      if (path === "/api/admin/tick" && request.method === "POST") {
+        try {
+          const r = await tick(env);
+          await saveTick(env, { at: Date.now(), ok: true, r });
+          return json({ ok: true, result: r });
+        } catch (e) {
+          await saveTick(env, { at: Date.now(), ok: false, error: String((e && e.message) || e) });
+          return json({ ok: false, error: String((e && e.message) || e) }, 500);
+        }
       }
       if (path === "/api/admin/diagnose" && request.method === "GET") return json(await adminDiagnose(env, now));
       if (path === "/api/admin/testpush" && request.method === "POST") return json(await adminTestPush(env, now));
