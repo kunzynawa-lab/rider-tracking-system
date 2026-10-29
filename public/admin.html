@@ -385,7 +385,7 @@
   <dialog id="diagDlg">
     <h2 style="font-size:18px;margin-bottom:12px" data-i="diagTitle"></h2>
     <div id="diagBody" style="font-size:14.5px;line-height:1.9"></div>
-    <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap"><button class="btn" id="diagTest" data-i="testBtn"></button><button class="btn ghost" id="diagClose" data-i="diagClose"></button></div>
+    <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap"><button class="btn" id="diagTest" data-i="testBtn"></button><button class="btn ghost" id="diagTick" data-i="tickBtn"></button><button class="btn ghost" id="diagClose" data-i="diagClose"></button></div>
   </dialog>
 
   <dialog id="shiftDlg">
@@ -508,6 +508,7 @@
   };
 
   Object.assign(I18N.en, {
+    tickBtn: "Run scheduler now", tickOk: "Scheduler ran.", dg_keys: "Keys (public start…end / secret end)",
     navMsg: "Messages", msgTitle: "Send a message to riders", msgSub: "The same message reaches everyone, or only the rider you choose. It shows as a notification and inside the app.", msgPh: "Write your message…", msgAll: "All riders", msgOne: "One rider (ID)", msgRiderPh: "Rider ID", msgSend: "Send", msgSent: "Sent to {n} rider(s).", msgNeedText: "Write a message first.", msgNeedId: "Enter the rider ID.", msgConfirmAll: "Send this message to ALL riders?",
     k_started: "Started shift", s_started: "pressed “start shift”", k_notstarted: "Not started", s_notstarted: "shift time came, did not press start", f_started: "Started shift", f_not_started: "Not started",
     rsupLabel: "Responsible supervisor", rsupAll: "All supervisors", rsupSaved: "Supervisor updated.",
@@ -543,6 +544,7 @@
     addHelp2: "Upload an Excel/CSV file (column 1 = ID, column 2 = name, column 3 = shift name or number, optional), or paste from Excel, or type one rider per line: ID, name, shift. Only riders added here can open the app.",
   });
   Object.assign(I18N.ar, {
+    tickBtn: "شغّل المجدول الآن", tickOk: "اتشغّل المجدول.", dg_keys: "المفاتيح (بداية…نهاية العام / نهاية السري)",
     navMsg: "الرسائل", msgTitle: "إرسال رسالة للمناديب", msgSub: "نفس الرسالة توصل للكل، أو لمندوب واحد تختاره. بتظهر كإشعار وجوه التطبيق.", msgPh: "اكتب رسالتك…", msgAll: "كل المناديب", msgOne: "مندوب واحد (بالرقم)", msgRiderPh: "رقم المندوب", msgSend: "إرسال", msgSent: "اتبعتت لـ {n} مندوب.", msgNeedText: "اكتب الرسالة الأول.", msgNeedId: "اكتب رقم المندوب.", msgConfirmAll: "تبعت الرسالة دي لكل المناديب؟",
     k_started: "بدأوا الشيفت", s_started: "ضغطوا «بدأت شيفتي»", k_notstarted: "لم يبدأوا", s_notstarted: "جه وقت شيفتهم ولم يضغطوا", f_started: "بدأ الشيفت", f_not_started: "لم يبدأ",
     rsupLabel: "المشرف المسؤول", rsupAll: "كل المشرفين", rsupSaved: "تم تغيير المشرف.",
@@ -1315,6 +1317,7 @@
         (d.problems.length ? d.problems.map((x) => `<div class="card" style="padding:8px 12px;margin-bottom:8px;border-color:var(--red);background:var(--red-soft)">⚠️ ${esc(x)}</div>`).join("") : `<div class="card" style="padding:8px 12px;margin-bottom:8px;border-color:var(--green)">✅ ${esc(T("diagOk"))}</div>`) +
         row("dg_time", d.local_time + " (" + d.timezone + ")") + row("dg_riders", d.riders) + row("dg_push", d.with_push) +
         row("dg_elig", d.eligible_with_push + " / " + d.eligible_now) +
+        (d.key_hint ? row("dg_keys", d.key_hint.public_start + "…" + d.key_hint.public_end + " / …" + d.key_hint.private_end + " (" + d.key_hint.private_len + ")") : "") +
         row("dg_last", lt ? hhmm(lt.at) + (lt.ok ? "" : " ✖") : "–") + row("dg_prompt", d.last_prompt_at ? hhmm(d.last_prompt_at) : "–") +
         (testRes ? `<div style="margin-top:8px"><b>${esc(T("dg_test", { s: testRes.sent, f: testRes.failed, t: testRes.total }))}</b>${testRes.detail ? `<div class="muted" dir="ltr" style="font-size:12.5px">${esc(testRes.detail)}</div>` : ""}</div>` : "");
       if (!$("diagDlg").open) $("diagDlg").showModal();
@@ -1336,6 +1339,10 @@
   $("annRider").addEventListener("input", () => { document.querySelector("input[name=annTo][value=one]").checked = true; });
   $("grpClose").addEventListener("click", () => $("grpDlg").close());
   $("diagBtn").addEventListener("click", () => openDiag());
+  $("diagTick").addEventListener("click", async () => {
+    $("diagTick").disabled = true;
+    try { const r = await api("/api/admin/tick", { method: "POST", body: "{}" }); toast(T("tickOk")); openDiag(); } catch (e) { toast((e && e.message) || "error"); openDiag(); } finally { $("diagTick").disabled = false; }
+  });
   $("diagClose").addEventListener("click", () => $("diagDlg").close());
   $("diagTest").addEventListener("click", async () => {
     $("diagTest").disabled = true;
